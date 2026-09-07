@@ -1,0 +1,64 @@
+# Jason-skd 动态主页配置 —— 用户唯一日常编辑点（契约 issue #1）
+# README.md 由流水线生成，绝不手写；改这里 + 等 Actions 跑（或手动 dispatch）。
+
+timezone: Asia/Shanghai
+
+theme:
+  # 靛夜青（Tokyo Night 调性），定稿色值（已回填 issue #1）
+  base: "1a1b26"
+  accent: "7aa2f7"
+  cyan: "7dcfff"
+
+# ── sources 层取数配置 ──
+author_emails: # 只统计这些邮箱的提交（uaih3k9x@gmail.com 不是本人邮箱，勿加）
+  - "wintor76111@gmail.com"
+
+org:
+  login: "SCNUAutoPtr"
+  repos:
+    - "SCNUAutoPtr/go-ce-v3"
+
+window_days: 365
+include_external: true # 语言统计纳入外部贡献仓库（如 awesome-dsh-plugin 上游）
+
+# 竖排连续布局：按此顺序自上而下拼接
+sections:
+  - banner
+  - typing
+  - stats
+  - languages
+  - org_card
+  - recent_project
+
+typing:
+  lines:
+    - "wintor_ · CS @ Aberdeen"
+    - "C / Python / Zig · 造轮子爱好者"
+    - "AutoBits @ SCNUAutoPtr 成员"
+    - "LeetCode & Codeforces 选手"
+  font: "Fira Code"
+
+banner:
+  height: 200
+
+org_card:
+  enabled: true
+
+recent_project:
+  enabled: true
+  exclude_external: true
+
+excludes:
+  repos: []
+  languages: []
+  # 显式列表会整体覆盖代码默认值，故默认 vendor 类目录必须一并列全
+  paths:
+    - "**/vendor/**"
+    - "**/vendors/**"
+    - "**/third_party/**"
+    - "**/thirdparty/**"
+    - "**/third-party/**"
+    - "**/extern/**"
+    - "**/external/**"
+    - "**/deps/**"
+    - "**/zig-pkg/**" # Iridoporth-backend：用户手写过 vendored sqlite（zig-pkg），commit 加权无法归零，需路径排除

@@ -1,0 +1,10 @@
+[
+  { "lang": "Python", "weight": 5230, "pct": 35.2 },
+  { "lang": "TypeScript", "weight": 2980, "pct": 20.1 },
+  { "lang": "Zig", "weight": 2650, "pct": 17.8 },
+  { "lang": "C", "weight": 1190, "pct": 8.0 },
+  { "lang": "Kotlin", "weight": 970, "pct": 6.5 },
+  { "lang": "Go", "weight": 860, "pct": 5.9 },
+  { "lang": "C#", "weight": 610, "pct": 4.0 },
+  { "lang": "CSS", "weight": 370, "pct": 2.5 }
+]

@@ -22,13 +22,15 @@ def test_fixtures_e2e_generates_readme(project: Path) -> None:
     order = [
         "capsule-render",
         "Typing SVG",
-        "过去 365 天",
-        "🧑‍💻 语言",
+        "Last 365 Days",
+        "🧑‍💻 Languages",
         "avatars.githubusercontent.com/u/129657365",
-        "最近在写",
+        "Recently Working On",
     ]
     positions = [readme.index(marker) for marker in order]
     assert positions == sorted(positions)
+    # v1.2：段落间 --- 分割线（六段 = 5 条）
+    assert readme.count("\n\n---\n\n") == 5
 
 
 def test_toggle_off_removes_component(project: Path) -> None:

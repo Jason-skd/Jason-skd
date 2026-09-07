@@ -1,9 +1,9 @@
-"""stats 组件：三枚数据徽章 + 精简口径脚注。
+"""stats 组件：三枚数据徽章 + 精简口径脚注（v1.2：显示文案英文）。
 
 口径（issue #1 / v1.1）：stars / contributions / active days 来自
 data/stats.json（数据源层 issue #2 产出），组件不自带数字；
-脚注「近 N 天 · 含 X 条私有贡献」必须可见（不藏在 HTML 注释里），
-公开拆分明细已按 v1.1 精简移除（用户如需可再恢复）。
+脚注「Last N days · incl. X private contributions」必须可见（不藏在
+HTML 注释里），公开拆分明细已按 v1.1 精简移除（用户如需可再恢复）。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
     active_days = int(data["activeDays"])
     window = int(data.get("windowDays", 365))
     private = int(data.get("privateContributions", 0))
-    header = str(config.get("header") or f"📊 过去 {window} 天")
+    header = str(config.get("header") or f"📊 Last {window} Days")
 
     color = theme["accent"]
     badges = (
@@ -33,9 +33,9 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
         + _badge("Active days", active_days, color)
     )
 
-    segments = [f"近 {window} 天 · 含 {private} 条私有贡献"]
+    segments = [f"Last {window} days · incl. {private} private contributions"]
     if data.get("degraded"):
-        segments.append("⚠️ 降级口径（无 PAT，仅公开数据）")
+        segments.append("⚠️ public data only (no PAT)")
 
     return "\n".join(
         [
@@ -45,7 +45,7 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
             badges,
             "</p>",
             "",
-            f'<p align="center"><sub>{" ｜ ".join(segments)}</sub></p>',
+            f'<p align="center"><sub>{" | ".join(segments)}</sub></p>',
         ]
     )
 

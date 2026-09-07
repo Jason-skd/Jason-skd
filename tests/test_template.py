@@ -47,7 +47,7 @@ def test_theme_defaults_when_keys_missing() -> None:
     assert "0:1a1b26,100:7aa2f7" in out
 
 
-def test_vertical_spacing_between_fragments() -> None:
-    """竖排连续布局：片段之间恰好一个空行。"""
-    out = _render({"first": "AAA", "second": "BBB"}, PROFILE_STUB)
-    assert "AAA\n\nBBB" in out
+def test_sections_separated_by_divider() -> None:
+    """v1.2：段落间 --- 分割线；仅段落之间，末段后直接接 footer。"""
+    out = _render({"first": "AAA", "second": "BBB", "third": "CCC"}, PROFILE_STUB)
+    assert "AAA\n\n---\n\nBBB\n\n---\n\nCCC" in out

@@ -4,37 +4,48 @@
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0:1a1b26,100:7aa2f7&height=280&section=header" alt="banner" width="100%" />
 </p>
 
+---
+
 <p align="center">
   <a href="https://git.io/typing-svg">
     <img src="https://readme-typing-svg.demolab.com/?lines=wintor_+%C2%B7+CS+%40+SCNU%2FAberdeen;Zig+%26+Go+Minimalism+enthusiasts;AutoBits+%40+SCNUAutoPtr+member;ENTJ+%C2%B7+Commander&font=Fira+Code&size=28&width=750&height=74&color=7aa2f7&center=true&vCenter=true&duration=4000&pause=800&background=0D1117" alt="Typing SVG" />
   </a>
 </p>
 
-<h3 align="center">📊 过去 365 天</h3>
+---
+
+<h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
   <img alt="Stars" src="https://img.shields.io/badge/stars-22-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-992-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-149-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>近 365 天 · 含 322 条私有贡献</sub></p>
+<p align="center"><sub>Last 365 days · incl. 322 private contributions</sub></p>
 
-<h3 align="center">🧑‍💻 语言</h3>
+---
+
+<h3 align="center">🧑‍💻 Languages</h3>
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 34.2%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 19.0%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 14.7%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 10.8%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 8.9%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg" height="48" alt="CSS" title="CSS 6.3%" />&nbsp;&nbsp;·&nbsp;&nbsp;<sub><b>SQL</b> 1.3%</sub>&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 1.3%" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 34.2%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 19.0%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 14.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 10.8%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 8.9%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg" height="48" alt="CSS" title="CSS 6.3%" />&nbsp;&nbsp;&nbsp;&nbsp;<sub><b>SQL</b> 1.3%</sub>&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 1.3%" />
 </p>
 
-<h3 align="center">🏫 我所在的组织</h3>
+---
+
+<h3 align="center">🏫 Organization</h3>
 
 <p align="center">
   <a href="https://github.com/SCNUAutoPtr"><img src="https://avatars.githubusercontent.com/u/129657365?v=4" width="96" alt="AutoBits @ SCNUAutoPtr" title="AutoBits @ SCNUAutoPtr" /></a>
 </p>
 
-<h3 align="center">🔥 最近在写</h3>
+---
+
+<h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/SCNUAutoPtr/go-ce-v3"><b>go-ce-v3</b></a>
-  <br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="20" alt="Go" /> Go · 2026-09-07 当天 11 commits
+  <a href="https://github.com/SCNUAutoPtr/go-ce-v3"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="go-ce-v3" /></a>
+  <br/><b>go-ce-v3</b>
+  <br/><sub>11 commits yesterday</sub>
 </p>
 
 <p align="center">

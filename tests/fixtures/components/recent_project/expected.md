@@ -1,7 +1,7 @@
-<h3 align="center">🔥 最近在写</h3>
+<h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/Jason-skd/dsh-session-fork"><b>dsh-session-fork</b></a>
-  — DeepSeek Harness 会话分支治理插件
-  <br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="20" alt="TypeScript" /> TypeScript · 2026-09-06 当天 6 commits
+  <a href="https://github.com/Jason-skd/dsh-session-fork"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="96" alt="TypeScript" title="dsh-session-fork — DeepSeek Harness 会话分支治理插件" /></a>
+  <br/><b>dsh-session-fork</b>
+  <br/><sub>6 commits yesterday</sub>
 </p>

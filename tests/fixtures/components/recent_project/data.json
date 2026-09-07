@@ -1,0 +1,9 @@
+{
+  "repo": "dsh-session-fork",
+  "url": "https://github.com/Jason-skd/dsh-session-fork",
+  "desc": "DeepSeek Harness 会话分支治理插件",
+  "lang": "TypeScript",
+  "commits": 6,
+  "date": "2026-09-06",
+  "external": false
+}

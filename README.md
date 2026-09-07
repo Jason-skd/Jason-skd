@@ -13,10 +13,10 @@
 <h3 align="left">📊 过去 365 天</h3>
 
 <p>
-  <img alt="Stars" src="https://img.shields.io/badge/stars-21-7aa2f7?style=flat-square" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-984-7aa2f7?style=flat-square" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-149-7aa2f7?style=flat-square" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-22-7aa2f7?style=flat-square" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-992-7aa2f7?style=flat-square" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-149-7aa2f7?style=flat-square" />
 </p>
 
-<p align="left"><sub>近 365 天 · 含 322 条私有贡献 ｜ 公开拆分：539 commits · 56 issues · 41 PRs · 15 reviews</sub></p>
+<p align="left"><sub>近 365 天 · 含 322 条私有贡献 ｜ 公开拆分：546 commits · 57 issues · 41 PRs · 15 reviews</sub></p>
 
 <h3 align="left">🧑‍💻 语言（按 commit 加权，含组织/外部贡献）</h3>
 
@@ -37,7 +37,7 @@
 
 <p>
   <a href="https://github.com/SCNUAutoPtr/go-ce-v3"><b>go-ce-v3</b></a>
-  <br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="20" alt="Go" /> Go · 2026-09-06 当天 14 commits
+  <br/><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="20" alt="Go" /> Go · 2026-09-07 当天 11 commits
 </p>
 
 <p align="center">

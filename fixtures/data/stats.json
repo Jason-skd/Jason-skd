@@ -1,0 +1,17 @@
+{
+  "stars": 21,
+  "contributions": 976,
+  "activeDays": 149,
+  "windowDays": 365,
+  "breakdown": {
+    "commits": 538,
+    "issues": 52,
+    "pullRequests": 41,
+    "reviews": 15,
+    "repositories": 10
+  },
+  "publicContributions": 656,
+  "privateContributions": 320,
+  "degraded": false,
+  "generatedAt": "2026-09-07T16:17:00+08:00"
+}

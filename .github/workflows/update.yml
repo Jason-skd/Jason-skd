@@ -1,0 +1,76 @@
+# Jason-skd 动态主页流水线（issue #4）
+#
+# 触发：
+#   1. 每日 cron "17 16 * * *"（UTC）= 北京时间 00:17；
+#      注意：GitHub 会在仓库 60 天无活动时自动停用 scheduled workflow，
+#      本流水线每日自动提交本身即保活（这也是生成提交不打 [skip ci] 以外
+#      唯一需要留意的运维点——只要 cron 在跑，仓库就不会"失活"）。
+#   2. workflow_dispatch 手动触发（可勾选 fixtures 离线模式做演示）。
+#   3. push 到 main 且仅当源文件变化（paths 过滤）——防生成物回推触发循环；
+#      生成提交还带 [skip ci] 双保险。
+#
+# 失败语义：生成或校验门失败 → 不 commit、不 push，旧 README 原样保留。
+#
+# 令牌：PROFILE_PAT（classic, repo scope）用于私有 org 仓库取数；
+#       未配置时 sources 层自动降级公开口径（数据中标记 degraded）。
+name: update-profile
+
+on:
+  schedule:
+    - cron: "17 16 * * *" # 北京时间 00:17
+  workflow_dispatch:
+    inputs:
+      fixtures:
+        description: "离线 fixture 模式（不访问 GitHub API，用于演示/调试）"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - src/**
+      - templates/**
+      - profile.yaml
+      - .github/workflows/update.yml
+      - pyproject.toml
+      - uv.lock
+
+permissions:
+  contents: write # 允许 workflow 提交并推送生成的 README
+
+concurrency:
+  group: profile-update-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies (locked, Python 3.14 per .python-version)
+        run: uv sync --locked
+
+      - name: Generate README
+        run: uv run main ${{ inputs.fixtures == true && '--fixtures fixtures' || '' }}
+        env:
+          PROFILE_PAT: ${{ secrets.PROFILE_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push (generated, [skip ci])
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if [ -d data ]; then git add data; fi
+          if git diff --cached --quiet; then
+            echo "No changes — README already up to date."
+            exit 0
+          fi
+          git commit -m "chore(readme): auto update $(date -u +%F) [skip ci]"
+          git push

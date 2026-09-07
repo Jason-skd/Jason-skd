@@ -1,0 +1,40 @@
+# Jason-skd 动态主页配置 —— 用户唯一日常编辑点（契约 issue #1）
+# README.md 由流水线生成，绝不手写；改这里 + 等 Actions 跑（或手动 dispatch）。
+
+timezone: Asia/Shanghai
+
+theme:
+  # 靛夜青（Tokyo Night 调性）；精确色值由组件层定稿后回填 issue #1
+  accent: "7aa2f7"
+
+# 竖排连续布局：按此顺序自上而下拼接
+sections:
+  - banner
+  - typing
+  - stats
+  - languages
+  - org_card
+  - recent_project
+
+typing:
+  lines:
+    - "wintor_ · CS @ Aberdeen"
+    - "C / Python / Zig · 造轮子爱好者"
+    - "AutoBits @ SCNUAutoPtr 成员"
+    - "LeetCode & Codeforces 选手"
+  font: "Fira Code"
+
+banner:
+  height: 200
+
+org_card:
+  enabled: true
+
+recent_project:
+  enabled: true
+  exclude_external: true
+
+excludes:
+  repos: []
+  languages: []
+  paths: []

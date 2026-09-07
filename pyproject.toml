@@ -1,13 +1,16 @@
 [project]
 name = "main"
 version = "0.1.0"
-description = "Add your description here"
+description = "Dynamic GitHub profile README generator for Jason-skd"
 readme = "README.md"
 authors = [
     { name = "Jason-skd", email = "wintor76111@gmail.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0.3",
+    "requests>=2.34.2",
+]
 
 [project.scripts]
 main = "main:main"
@@ -15,3 +18,19 @@ main = "main:main"
 [build-system]
 requires = ["uv_build>=0.12.9,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

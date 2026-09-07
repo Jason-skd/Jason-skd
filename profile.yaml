@@ -37,12 +37,24 @@ typing:
     - "AutoBits @ SCNUAutoPtr 成员"
     - "LeetCode & Codeforces 选手"
   font: "Fira Code"
+  size: 28
+  width: 750
+  background: "0D1117" # GitHub 深色卡背（v1.1 定稿）
 
 banner:
-  height: 200
+  height: 280
+  # v1.1 预览对比待用户选定后启用（capsule-render 内嵌文字，白字自动适配渐变）：
+  # text: "wintor_"
+  # desc: "CS @ Aberdeen · 造轮子爱好者"
+  # font_size: 42
+  # desc_size: 20
+
+languages:
+  icon_height: 48 # v1.1：纯图标行放大
 
 org_card:
   enabled: true
+  logo_height: 96 # v1.1：纯 logo 放大带链接
 
 recent_project:
   enabled: true
@@ -50,7 +62,9 @@ recent_project:
 
 excludes:
   repos: []
-  languages: []
+  languages:
+    - "Markdown" # 文档类不计语言（v1.1）
+    - "JSON" # 数据/lock 类不计语言（v1.1），剩余占比自动重归一
   # 显式列表会整体覆盖代码默认值，故默认 vendor 类目录必须一并列全
   paths:
     - "**/vendor/**"

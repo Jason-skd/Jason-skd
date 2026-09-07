@@ -124,3 +124,47 @@ def test_theme_overrides_apply() -> None:
         {"theme": {"base": "#10101A", "accent": "7AA2F7"}, "height": 100}, {}
     )
     assert "0:10101a,100:7aa2f7" in rendered
+
+
+def test_typing_background_param() -> None:
+    """v1.1：typing.background 拼进 query（# 前缀容错），未配置则不出现。"""
+    cfg = {
+        "theme": {"accent": "7aa2f7"},
+        "timezone": "UTC",
+        "excludes": {},
+        "lines": ["hello"],
+        "background": "#0D1117",
+    }
+    rendered = _module("typing").render(cfg, {})
+    assert "background=0D1117" in rendered
+    rendered_off = _module("typing").render(
+        {"theme": {}, "timezone": "UTC", "excludes": {}, "lines": ["hello"]}, {}
+    )
+    assert "background=" not in rendered_off
+
+
+def test_banner_embedded_text_and_desc() -> None:
+    """v1.1：banner.text/desc 内嵌文字（capsule-render），未配置则保持纯波浪。"""
+    cfg = {
+        "theme": {"base": "1a1b26", "accent": "7aa2f7"},
+        "timezone": "UTC",
+        "excludes": {},
+        "height": 280,
+        "text": "wintor_",
+        "desc": "CS @ Aberdeen",
+        "font_size": 42,
+        "desc_size": 20,
+    }
+    rendered = _module("banner").render(cfg, {})
+    assert "text=wintor_" in rendered
+    assert "fontSize=42" in rendered
+    assert "fontAlign=50" in rendered
+    assert "desc=CS+%40+Aberdeen" in rendered
+    assert "descSize=20" in rendered
+    assert "descAlign=50" in rendered
+
+    rendered_plain = _module("banner").render(
+        {"theme": {}, "timezone": "UTC", "excludes": {}, "height": 280}, {}
+    )
+    assert "text=" not in rendered_plain
+    assert "desc=" not in rendered_plain

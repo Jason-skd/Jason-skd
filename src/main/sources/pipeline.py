@@ -299,11 +299,23 @@ def _gather(
     return payloads, summary
 
 
-def collect(config_path: str | Path = "profile.yaml", token: str | None = None) -> dict[str, Any]:
-    """Option A consumer API: the four payloads, isomorphic to data/*.json."""
-    payloads, _ = _gather(
+def collect(
+    config_path: str | Path = "profile.yaml",
+    token: str | None = None,
+    *,
+    with_summary: bool = False,
+) -> dict[str, Any] | tuple[dict[str, Any], dict[str, Any]]:
+    """Option A consumer API: the four payloads, isomorphic to data/*.json.
+
+    ``with_summary=True`` additionally returns the run summary so callers
+    (cli) can surface channel-2 degradation (skipped repos) instead of
+    silently producing partial data.
+    """
+    payloads, summary = _gather(
         config_path, token, no_network=False, from_iso=None, to_iso=None, cache_dir=None
     )
+    if with_summary:
+        return payloads, summary
     return payloads
 
 

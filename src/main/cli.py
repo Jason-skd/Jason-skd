@@ -73,7 +73,19 @@ def provision_data(args: argparse.Namespace, config_path: Path) -> dict[str, Any
         raise ConfigError(
             "sources 层（issue #2）尚未集成，且无现成 data/ 目录；离线演示请用 --fixtures <dir>"
         ) from exc
-    return collect(config_path, resolve_token())
+    payloads, summary = collect(config_path, resolve_token(), with_summary=True)  # type: ignore[union-attr,misc]
+    for item in summary.get("reposSkipped") or []:
+        logger.warning(
+            "channel-2 跳过仓库 %s：%s（该仓库未计入语言/最近动态统计）",
+            item.get("repo"),
+            item.get("reason"),
+        )
+    if summary.get("degraded"):
+        logger.warning(
+            "本次数据为降级口径（reposScanned=%s）——语言/最近动态可能不完整，详见上方逐仓库原因",
+            summary.get("reposScanned"),
+        )
+    return payloads
 
 
 def run(argv: list[str] | None = None) -> int:

@@ -36,6 +36,7 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
     height = int(config.get("height") or size * 2 + 18)
     duration = int(config.get("duration", 4000))
     pause = int(config.get("pause", 800))
+    background = str(config.get("background") or "").strip().lstrip("#")
 
     query = "&".join(
         [
@@ -50,6 +51,7 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
             f"duration={duration}",
             f"pause={pause}",
         ]
+        + ([f"background={background}"] if background else [])
     )
     url = f"{DEFAULT_INSTANCE}?{query}"
     return (

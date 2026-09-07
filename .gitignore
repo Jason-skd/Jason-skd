@@ -225,3 +225,9 @@ pyrightconfig.json
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,visualstudiocode,python
+
+# profile pipeline artifacts (generated, not committed)
+/data/
+/.cache/
+/.uv-cache/
+/.uv-python/

@@ -1,4 +1,4 @@
-"""测试公共设施：把 profile.yaml + fixtures 拷进临时目录当工程用。"""
+"""测试公共设施：把 profile.yaml + fixtures 拷进临时目录当工程用；tests/ 作为包被发现。"""
 
 import shutil
 from pathlib import Path

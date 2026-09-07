@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://git.io/typing-svg">
-    <img src="https://readme-typing-svg.demolab.com/?lines=wintor_+%C2%B7+CS+%40+Aberdeen;C+%2F+Python+%2F+Zig+%C2%B7+%E9%80%A0%E8%BD%AE%E5%AD%90%E7%88%B1%E5%A5%BD%E8%80%85;AutoBits+%40+SCNUAutoPtr+%E6%88%90%E5%91%98;LeetCode+%26+Codeforces+%E9%80%89%E6%89%8B&font=Fira+Code&size=28&width=750&height=74&color=7aa2f7&center=true&vCenter=true&duration=4000&pause=800&background=0D1117" alt="Typing SVG" />
+    <img src="https://readme-typing-svg.demolab.com/?lines=wintor_+%C2%B7+CS+%40+SCNU%2FAberdeen;Zig+%26+Go+Minimalism+enthusiasts;AutoBits+%40+SCNUAutoPtr+member;ENTJ+%C2%B7+Commander&font=Fira+Code&size=28&width=750&height=74&color=7aa2f7&center=true&vCenter=true&duration=4000&pause=800&background=0D1117" alt="Typing SVG" />
   </a>
 </p>
 
@@ -21,7 +21,7 @@
 <h3 align="center">🧑‍💻 语言</h3>
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 34.1%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 19.0%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 14.7%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 10.9%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 8.9%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg" height="48" alt="CSS" title="CSS 6.3%" />&nbsp;&nbsp;·&nbsp;&nbsp;<sub><b>SQL</b> 1.3%</sub>&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 1.3%" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 34.2%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 19.0%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 14.7%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 10.8%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 8.9%" />&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg" height="48" alt="CSS" title="CSS 6.3%" />&nbsp;&nbsp;·&nbsp;&nbsp;<sub><b>SQL</b> 1.3%</sub>&nbsp;&nbsp;·&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 1.3%" />
 </p>
 
 <h3 align="center">🏫 我所在的组织</h3>

@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from .pipeline import run
+from .pipeline import collect, run
 
-__all__ = ["run"]
+__all__ = ["collect", "run"]

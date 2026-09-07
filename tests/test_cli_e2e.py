@@ -74,12 +74,3 @@ def test_dry_run_writes_nothing(project: Path, capsys) -> None:
     assert rc == EXIT_OK
     assert "capsule-render" in capsys.readouterr().out
     assert not (project / "README.md").exists()
-
-
-def test_default_mode_without_sources_reports_config_error(
-    tmp_path: Path,
-) -> None:
-    cfg = tmp_path / "profile.yaml"
-    cfg.write_text("timezone: t\ntheme: {}\nsections: [banner]\n", encoding="utf-8")
-    rc = run(["--config", str(cfg)])
-    assert rc == 2

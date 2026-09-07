@@ -64,9 +64,7 @@ def fixture_registry(fixtures_dir: Path) -> dict[str, RenderFn]:
 
         return render
 
-    return {
-        name: _make(name) for name in SECTION_DATA if (base / f"{name}.md").is_file()
-    }
+    return {name: _make(name) for name in SECTION_DATA if (base / f"{name}.md").is_file()}
 
 
 def render_all(
@@ -92,9 +90,7 @@ def render_all(
             raise AssemblyError(f"component {name!r} produced empty output")
         outputs[name] = rendered.rstrip("\n")
     if missing:
-        raise AssemblyError(
-            f"missing components: {missing}（components 层 #3 尚未集成或未注册）"
-        )
+        raise AssemblyError(f"missing components: {missing}（components 层 #3 尚未集成或未注册）")
     return outputs
 
 
@@ -122,9 +118,7 @@ def assemble(
 def write_atomic(path: Path, content: str) -> None:
     """先写临时文件再原子替换——任何失败都不触碰旧 README。"""
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(
-        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
-    )
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(content)

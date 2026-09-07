@@ -36,8 +36,7 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
         pct = float(item.get("pct", 0.0))
         url = icon_url(lang, overrides)
         icon = (
-            f'<img src="{url}" height="{icon_height}" alt="{lang}" '
-            f'title="{lang} {pct:.1f}%" />'
+            f'<img src="{url}" height="{icon_height}" alt="{lang}" title="{lang} {pct:.1f}%" />'
             if url
             else ""
         )
@@ -47,6 +46,4 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
         raise ValueError("languages 截取 top 后为空")
 
     body = f"  {_SEPARATOR.join(units)}"
-    return "\n".join(
-        [f'<h3 align="left">{header}</h3>', "", '<p align="center">', body, "</p>"]
-    )
+    return "\n".join([f'<h3 align="left">{header}</h3>', "", '<p align="center">', body, "</p>"])

@@ -58,7 +58,7 @@ def test_output_non_empty(name: str) -> None:
 
 def test_typing_rejects_missing_lines() -> None:
     """typing.lines 是用户日常编辑点，缺失/为空必须显式报错而非静默。"""
-    with pytest.raises(ValueError, match="typing.lines"):
+    with pytest.raises(ValueError, match=r"typing\.lines"):
         _module("typing").render({"theme": {}, "timezone": "UTC", "excludes": {}}, {})
 
 
@@ -72,9 +72,7 @@ def test_recent_project_placeholder_without_repo() -> None:
 
 def test_languages_rejects_empty_data() -> None:
     with pytest.raises(ValueError, match="语言条目"):
-        _module("languages").render(
-            {"theme": {}, "timezone": "UTC", "excludes": {}}, []
-        )
+        _module("languages").render({"theme": {}, "timezone": "UTC", "excludes": {}}, [])
 
 
 def test_banner_rejects_bad_theme_hex() -> None:
@@ -102,9 +100,7 @@ def test_languages_icon_override() -> None:
 def test_languages_unknown_lang_text_fallback() -> None:
     """无图标语言回落为纯文本标签，不产生悬空 img。"""
     data = [{"lang": "UnknownLang", "weight": 1, "pct": 100.0}]
-    rendered = _module("languages").render(
-        {"theme": {}, "timezone": "UTC", "excludes": {}}, data
-    )
+    rendered = _module("languages").render({"theme": {}, "timezone": "UTC", "excludes": {}}, data)
     assert "<img" not in rendered
     assert "<b>UnknownLang</b> 100.0%" in rendered
 
@@ -118,9 +114,7 @@ def test_stats_shows_private_footnote() -> None:
 
 def test_stats_degraded_marker() -> None:
     data = _load("stats", "data") | {"degraded": True}
-    rendered = _module("stats").render(
-        {"theme": {}, "timezone": "UTC", "excludes": {}}, data
-    )
+    rendered = _module("stats").render({"theme": {}, "timezone": "UTC", "excludes": {}}, data)
     assert "降级口径" in rendered
 
 

@@ -31,15 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="main",
         description="Jason-skd 动态主页流水线：拉数 → 渲染 → 校验 → 写 README",
     )
-    parser.add_argument(
-        "--config", default="profile.yaml", type=Path, help="默认 profile.yaml"
-    )
-    parser.add_argument(
-        "--output", default=None, type=Path, help="默认 README.md（config 同目录）"
-    )
-    parser.add_argument(
-        "--data-dir", default=None, type=Path, help="默认 config 同目录 data/"
-    )
+    parser.add_argument("--config", default="profile.yaml", type=Path, help="默认 profile.yaml")
+    parser.add_argument("--output", default=None, type=Path, help="默认 README.md（config 同目录）")
+    parser.add_argument("--data-dir", default=None, type=Path, help="默认 config 同目录 data/")
     parser.add_argument(
         "--fixtures",
         default=None,
@@ -47,9 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="DIR",
         help="离线 fixture 模式：读 DIR/data 与 DIR/components_output",
     )
-    parser.add_argument(
-        "--dry-run", action="store_true", help="只校验并打印到 stdout，不写文件"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="只校验并打印到 stdout，不写文件")
     return parser
 
 
@@ -79,16 +71,13 @@ def provision_data(args: argparse.Namespace, config_path: Path) -> dict[str, Any
         from main.sources import collect  # type: ignore[import-not-found]
     except ModuleNotFoundError as exc:
         raise ConfigError(
-            "sources 层（issue #2）尚未集成，且无现成 data/ 目录；"
-            "离线演示请用 --fixtures <dir>"
+            "sources 层（issue #2）尚未集成，且无现成 data/ 目录；离线演示请用 --fixtures <dir>"
         ) from exc
     return collect(config_path, resolve_token())
 
 
 def run(argv: list[str] | None = None) -> int:
-    logging.basicConfig(
-        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
-    )
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     args = build_parser().parse_args(argv)
     config_path = args.config
     try:
@@ -97,9 +86,7 @@ def run(argv: list[str] | None = None) -> int:
         if args.fixtures is not None or resolve_token() is None:
             logger.warning("降级口径：fixture 数据或无 PAT 公开口径")
         repo_root = config_path.parent
-        registry = (
-            fixture_registry(args.fixtures) if args.fixtures else import_registry()
-        )
+        registry = fixture_registry(args.fixtures) if args.fixtures else import_registry()
         content = assemble(profile, data_map, registry, repo_root)
     except ConfigError as exc:
         logger.error("配置错误：%s", exc)

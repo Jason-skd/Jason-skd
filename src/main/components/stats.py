@@ -58,7 +58,5 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
 
 
 def _badge(label: str, value: int, color: str) -> str:
-    url = (
-        f"{_SHIELDS}/{quote(label.lower(), safe='')}-{value}-{color}?style=flat-square"
-    )
+    url = f"{_SHIELDS}/{quote(label.lower(), safe='')}-{value}-{color}?style=flat-square"
     return f'  <img alt="{label}" src="{url}" />'

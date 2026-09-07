@@ -36,9 +36,7 @@ def load_profile(path: Path) -> dict[str, Any]:
         raise ConfigError("sections 必须是非空列表")
     unknown = [s for s in sections if s not in KNOWN_SECTIONS]
     if unknown:
-        raise ConfigError(
-            f"未知组件 section: {unknown}（合法值: {list(KNOWN_SECTIONS)}）"
-        )
+        raise ConfigError(f"未知组件 section: {unknown}（合法值: {list(KNOWN_SECTIONS)}）")
     if len(set(sections)) != len(sections):
         raise ConfigError("sections 存在重复项")
     theme = raw.get("theme")
@@ -64,8 +62,7 @@ def enabled_sections(profile: dict[str, Any]) -> list[str]:
     return [
         name
         for name in profile["sections"]
-        if name not in TOGGLEABLE_SECTIONS
-        or bool(profile.get(name, {}).get("enabled", True))
+        if name not in TOGGLEABLE_SECTIONS or bool(profile.get(name, {}).get("enabled", True))
     ]
 
 

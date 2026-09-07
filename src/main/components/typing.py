@@ -65,9 +65,7 @@ def _estimate_width(lines: list[str], size: int) -> int:
     """按最长行的字符单位宽估算 SVG 宽度，向上取整到 10px。"""
 
     def units(text: str) -> float:
-        return sum(
-            1.0 if unicodedata.east_asian_width(ch) in "WF" else 0.65 for ch in text
-        )
+        return sum(1.0 if unicodedata.east_asian_width(ch) in "WF" else 0.65 for ch in text)
 
     longest = max(units(line) for line in lines)
     return int(math.ceil((longest * size + 60) / 10.0) * 10)

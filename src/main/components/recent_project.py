@@ -37,24 +37,16 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
 
     overrides = dict(config.get("icons") or {})
     icon_url_value = icon_url(lang, overrides) if lang else None
-    icon = (
-        f'<img src="{icon_url_value}" height="20" alt="{lang}" /> '
-        if icon_url_value
-        else ""
-    )
+    icon = f'<img src="{icon_url_value}" height="20" alt="{lang}" /> ' if icon_url_value else ""
 
     title = f'  <a href="{url}"><b>{repo}</b></a>'
     if desc:
         title += f"\n  — {desc}"
 
-    meta_parts = [
-        part for part in (f"{icon}{lang}" if lang else "", _meta(commits, date)) if part
-    ]
+    meta_parts = [part for part in (f"{icon}{lang}" if lang else "", _meta(commits, date)) if part]
     meta = f"  <br/>{' · '.join(meta_parts)}" if meta_parts else ""
 
-    return "\n".join(
-        [f'<h3 align="left">{header}</h3>', "", "<p>", title, meta, "</p>"]
-    )
+    return "\n".join([f'<h3 align="left">{header}</h3>', "", "<p>", title, meta, "</p>"])
 
 
 def _meta(commits: int, date: str) -> str:

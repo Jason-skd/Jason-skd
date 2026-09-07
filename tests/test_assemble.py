@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import REPO_ROOT
 
 from main.assemble import (
     GENERATED_MARKER,
@@ -16,6 +15,8 @@ from main.assemble import (
     write_atomic,
 )
 from main.config import load_profile
+
+from .conftest import REPO_ROOT
 
 
 def _profile(
@@ -42,9 +43,7 @@ def _stub_registry() -> dict[str, Any]:
 
 def _stats_data() -> dict[str, Any]:
     return {
-        "stats": json.loads(
-            (REPO_ROOT / "fixtures" / "data" / "stats.json").read_text("utf-8")
-        )
+        "stats": json.loads((REPO_ROOT / "fixtures" / "data" / "stats.json").read_text("utf-8"))
     }
 
 
@@ -104,9 +103,7 @@ def test_fixture_registry_reads_outputs(tmp_path: Path) -> None:
     assert "capsule-render" in registry["banner"]({}, {})
 
 
-def test_write_atomic_replaces_and_cleans(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_write_atomic_replaces_and_cleans(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     target = tmp_path / "README.md"
     write_atomic(target, "v1\n")
     assert target.read_text(encoding="utf-8") == "v1\n"

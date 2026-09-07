@@ -23,7 +23,7 @@ def test_fixtures_e2e_generates_readme(project: Path) -> None:
         "capsule-render",
         "Typing SVG",
         "过去 365 天",
-        "commit 加权",
+        "🧑‍💻 语言",
         "avatars.githubusercontent.com/u/129657365",
         "最近在写",
     ]
@@ -74,3 +74,27 @@ def test_dry_run_writes_nothing(project: Path, capsys) -> None:
     assert rc == EXIT_OK
     assert "capsule-render" in capsys.readouterr().out
     assert not (project / "README.md").exists()
+
+
+def test_collect_degradation_surfaces_as_warning(project: Path, caplog, monkeypatch) -> None:
+    """channel-2 丢仓库不能再静默：cli 必须逐仓库 WARNING 并标记降级口径。"""
+    import json
+
+    import main.sources
+
+    fixtures = project / "fixtures" / "data"
+    payloads = {
+        n: json.loads((fixtures / f"{n}.json").read_text(encoding="utf-8"))
+        for n in ("stats", "org", "languages", "recent")
+    }
+    summary = {
+        "degraded": True,
+        "reposScanned": 7,
+        "reposSkipped": [{"repo": "Jason-skd/vassago", "reason": "clone failed x3"}],
+    }
+    monkeypatch.setattr(main.sources, "collect", lambda *a, **kw: (payloads, summary), raising=True)
+    with caplog.at_level("WARNING", logger="main"):
+        rc = run(["--config", str(project / "profile.yaml")])
+    assert rc == EXIT_OK
+    assert "channel-2 跳过仓库 Jason-skd/vassago" in caplog.text
+    assert "降级口径" in caplog.text

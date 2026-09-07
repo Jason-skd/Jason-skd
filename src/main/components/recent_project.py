@@ -21,9 +21,9 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
     if not repo:
         return "\n".join(
             [
-                f'<h3 align="left">{header}</h3>',
+                f'<h3 align="center">{header}</h3>',
                 "",
-                "<p><sub>（近一年暂无可展示的本地提交）</sub></p>",
+                '<p align="center"><sub>（近一年暂无可展示的本地提交）</sub></p>',
             ]
         )
 
@@ -46,7 +46,9 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
     meta_parts = [part for part in (f"{icon}{lang}" if lang else "", _meta(commits, date)) if part]
     meta = f"  <br/>{' · '.join(meta_parts)}" if meta_parts else ""
 
-    return "\n".join([f'<h3 align="left">{header}</h3>', "", "<p>", title, meta, "</p>"])
+    return "\n".join(
+        [f'<h3 align="center">{header}</h3>', "", '<p align="center">', title, meta, "</p>"]
+    )
 
 
 def _meta(commits: int, date: str) -> str:

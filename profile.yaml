@@ -10,7 +10,7 @@ theme:
   cyan: "7dcfff"
 
 # ── sources 层取数配置 ──
-author_emails: # 只统计这些邮箱的提交（uaih3k9x@gmail.com 不是本人邮箱，勿加）
+author_emails: # 只统计这些邮箱的提交
   - "wintor76111@gmail.com"
 
 org:
@@ -32,10 +32,10 @@ sections:
 
 typing:
   lines:
-    - "wintor_ · CS @ Aberdeen"
-    - "C / Python / Zig · 造轮子爱好者"
-    - "AutoBits @ SCNUAutoPtr 成员"
-    - "LeetCode & Codeforces 选手"
+    - "wintor_ · CS @ SCNU/Aberdeen"
+    - "Zig & Go Minimalism enthusiasts"
+    - "AutoBits @ SCNUAutoPtr member"
+    - "ENTJ · Commander"
   font: "Fira Code"
   size: 28
   width: 750

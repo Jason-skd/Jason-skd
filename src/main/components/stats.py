@@ -33,7 +33,7 @@ def render(config: dict[str, Any], data: dict[str, Any]) -> str:
         + _badge("Active days", active_days, color)
     )
 
-    segments = [f"Last {window} days · incl. {private} private contributions"]
+    segments = [f"incl. {private} private contributions"]
     if data.get("degraded"):
         segments.append("⚠️ public data only (no PAT)")
 

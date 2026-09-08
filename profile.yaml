@@ -73,6 +73,7 @@ excludes:
   languages:
     - "Markdown" # 文档类不计语言（v1.1）
     - "JSON" # 数据/lock 类不计语言（v1.1），剩余占比自动重归一
+    - "SQL" # 用户手加（v1.2 合并时保留）
   # 显式列表会整体覆盖代码默认值，故默认 vendor 类目录必须一并列全
   paths:
     - "**/vendor/**"

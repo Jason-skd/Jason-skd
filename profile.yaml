@@ -30,6 +30,10 @@ sections:
   - org_card
   - recent_project
 
+# 各节标题（v1.2 英文文案）——想改标题改这里；stats.header 的数字需与 window_days 保持一致
+stats:
+  header: "📊 Last 365 Days"
+
 typing:
   lines:
     - "wintor_ · CS @ SCNU/Aberdeen"
@@ -50,14 +54,18 @@ banner:
   # desc_size: 20
 
 languages:
+  header: "🧑‍💻 Languages"
   icon_height: 48 # v1.1：纯图标行放大
 
 org_card:
   enabled: true
+  header: "🏫 Organization"
   logo_height: 96 # v1.1：纯 logo 放大带链接
 
 recent_project:
   enabled: true
+  header: "🚀 Recently Working On"
+  icon_height: 96 # v1.2：大语言图标为视觉主体，链接挂图标上
   exclude_external: true
 
 excludes:

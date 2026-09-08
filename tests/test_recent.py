@@ -23,6 +23,7 @@ def test_walk_starts_from_yesterday() -> None:
     pick = pick_recent(acts, candidates=None, tz=TZ, today=today)
     assert pick is not None
     assert (pick.repo, pick.commits, pick.day) == ("Jason-skd/vassago", 3, "2026-09-06")
+    assert pick.tier == "yesterday"  # v1.2：回溯第 1 天命中
 
 
 def test_today_is_ignored() -> None:
@@ -31,6 +32,7 @@ def test_today_is_ignored() -> None:
     pick = pick_recent(acts, candidates=None, tz=TZ, today=today)
     assert pick is not None
     assert pick.day == "2026-09-05"
+    assert pick.tier == "recently"  # v1.2：更早日子命中
 
 
 def test_argmax_then_last_commit_then_name() -> None:

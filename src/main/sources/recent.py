@@ -24,6 +24,7 @@ class RecentPick:
     repo: str
     commits: int
     day: str
+    tier: str  # "yesterday"（回溯第 1 天命中）| "recently"（更早，v1.2 英文文案分档）
 
 
 def pick_recent(
@@ -48,5 +49,6 @@ def pick_recent(
             day_counts,
             key=lambda r: (-day_counts[r], -(pool[r].last_commit_ts or 0), r),
         )
-        return RecentPick(repo=best, commits=day_counts[best], day=day)
+        tier = "yesterday" if offset == 1 else "recently"
+        return RecentPick(repo=best, commits=day_counts[best], day=day, tier=tier)
     return None

@@ -63,11 +63,11 @@ def test_typing_rejects_missing_lines() -> None:
 
 
 def test_recent_project_placeholder_without_repo() -> None:
-    """recent 数据缺席时渲染占位行，保持非空以满足校验门。"""
+    """recent 数据缺席时渲染占位行，保持非空以满足校验门（v1.2 英文）。"""
     rendered = _module("recent_project").render(
         {"theme": {}, "timezone": "UTC", "excludes": {}}, {"repo": ""}
     )
-    assert "暂无可展示" in rendered
+    assert "No commits to show" in rendered
 
 
 def test_languages_rejects_empty_data() -> None:
@@ -106,16 +106,46 @@ def test_languages_unknown_lang_text_fallback() -> None:
 
 
 def test_stats_shows_private_footnote() -> None:
-    """锁定口径脚注必须可见（不藏在 HTML 注释里）。"""
+    """锁定口径脚注必须可见（不藏在 HTML 注释里；v1.2 英文）。"""
     rendered = _module("stats").render(_load("stats", "config"), _load("stats", "data"))
-    assert "含 320 条私有贡献" in rendered
+    assert "incl. 320 private contributions" in rendered
     assert "<!--" not in rendered
 
 
 def test_stats_degraded_marker() -> None:
     data = _load("stats", "data") | {"degraded": True}
     rendered = _module("stats").render({"theme": {}, "timezone": "UTC", "excludes": {}}, data)
-    assert "降级口径" in rendered
+    assert "public data only" in rendered
+
+
+def test_recent_project_link_on_icon_not_name() -> None:
+    """v1.2：链接语义挂大图标；仓库名纯文本加粗、无 <a>；commits 行两档英文。"""
+    rendered = _module("recent_project").render(
+        _load("recent_project", "config"), _load("recent_project", "data")
+    )
+    assert '<a href="https://github.com/Jason-skd/dsh-session-fork"><img' in rendered
+    assert "<b>dsh-session-fork</b>" in rendered
+    # 仓库名不再包链接（链接色移除）
+    assert 'href="https://github.com/Jason-skd/dsh-session-fork"><b>' not in rendered
+    assert "6 commits yesterday" in rendered
+    assert 'height="96"' in rendered
+
+
+def test_recent_project_tier_recently() -> None:
+    """tier=recently 档位与无图标回落（链接挂回仓库名）。"""
+    data = _load("recent_project", "data") | {"tier": "recently", "lang": "MyLang"}
+    rendered = _module("recent_project").render(
+        {"theme": {}, "timezone": "UTC", "excludes": {}}, data
+    )
+    assert "6 commits recently" in rendered
+    assert '<a href="https://github.com/Jason-skd/dsh-session-fork"><b>' in rendered
+
+
+def test_languages_row_has_no_dot_separator() -> None:
+    """v1.2：语言纯图标行清除 v1 的 · 分隔符残留，仅留间距。"""
+    rendered = _module("languages").render(_load("languages", "config"), _load("languages", "data"))
+    assert "·" not in rendered
+    assert "&nbsp;" in rendered
 
 
 def test_theme_overrides_apply() -> None:

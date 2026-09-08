@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-DEFAULT_HEADER = "🏫 我所在的组织"
+DEFAULT_HEADER = "🏫 Organization"
 DEFAULT_LOGO_HEIGHT = 96
 
 

@@ -14,10 +14,10 @@ from typing import Any
 from main.components._icons import icon_url
 from main.components._theme import resolve_theme
 
-DEFAULT_HEADER = "🧑‍💻 语言"
+DEFAULT_HEADER = "🧑‍💻 Languages"
 DEFAULT_TOP = 8
 DEFAULT_ICON_HEIGHT = 48
-_SEPARATOR = "&nbsp;&nbsp;·&nbsp;&nbsp;"
+_SEPARATOR = "&nbsp;&nbsp;&nbsp;&nbsp;"  # v1.2：纯图标行只留间距，清除 v1 的 · 残留
 
 
 def render(config: dict[str, Any], data: dict[str, Any]) -> str:

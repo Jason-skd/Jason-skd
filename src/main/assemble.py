@@ -111,7 +111,8 @@ def assemble(
         )
         template = env.get_template(template_path.name)
         return template.render(sections=outputs, profile=profile)
-    body = "\n\n".join(outputs.values())
+    # v1.2：段落间 --- 分割线，与模板 join 语义一致（模板缺席时的回落路径）
+    body = "\n\n---\n\n".join(outputs.values())
     return f"{GENERATED_MARKER}\n\n{body}\n"
 
 

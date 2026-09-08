@@ -63,7 +63,7 @@ org:
     assert isinstance(languages, list) and languages == []  # bare array per contract
 
     recent = files["recent.json"]
-    assert set(recent) == {"repo", "url", "desc", "lang", "commits", "date", "external"}
+    assert set(recent) == {"repo", "url", "desc", "lang", "commits", "date", "tier", "external"}
     assert recent["repo"] is None
 
     assert summary["degraded"] is True

@@ -242,6 +242,7 @@ def _gather(
             "lang": meta["lang"],
             "commits": pick.commits,
             "date": pick.day,
+            "tier": pick.tier,
             "external": pick.repo not in own_and_org,
         }
     else:
@@ -252,6 +253,7 @@ def _gather(
             "lang": None,
             "commits": None,
             "date": None,
+            "tier": None,
             "external": None,
         }
         ch2_notes.append("no commits found in lookback window")

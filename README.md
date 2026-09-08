@@ -17,7 +17,7 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-22-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1012-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-150-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-22-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1014-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-150-7aa2f7?style=for-the-badge" />
 </p>
 
 <p align="center"><sub>incl. 325 private contributions</sub></p>
@@ -43,9 +43,9 @@
 <h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/SCNUAutoPtr/go-ce-v3"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="go-ce-v3" /></a>
-  <br/><b>go-ce-v3</b>
-  <br/><sub>11 commits yesterday</sub>
+  <a href="https://github.com/Jason-skd/Jason-skd"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="Jason-skd — Dynamic profile README — assembled daily by code, never hand-edited" /></a>
+  <br/><b>Jason-skd</b>
+  <br/><sub>14 commits yesterday</sub>
 </p>
 
 <p align="center">

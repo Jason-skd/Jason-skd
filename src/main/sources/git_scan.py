@@ -4,6 +4,9 @@ Per repo: ``clone --shallow-since=<1y> --no-single-branch`` (or a fetch
 refresh when cached), then a single ``git log --all --numstat`` filtered by
 author emails yields per-day commit counts and per-file churn. Merge
 commits emit no numstat by default, which avoids double counting.
+
+Network clones are gated behind ``PROFILE_ALLOW_CLONES=1`` (set by CI only;
+local previews use ``--fixtures`` — issue #8 修订，防本地磁盘膨胀).
 """
 
 from __future__ import annotations
@@ -79,6 +82,22 @@ def _authed_url(url: str, token: str | None) -> str:
     return url.replace("https://github.com", f"https://x-access-token:{token}@github.com")
 
 
+_CLONE_GATE_ENV = "PROFILE_ALLOW_CLONES"
+
+
+def _clone_gate() -> None:
+    """本地磁盘防膨胀门禁（issue #8 修订）：未显式放行时拒绝网络克隆。
+
+    CI workflow 会设 PROFILE_ALLOW_CLONES=1；本地离线预览走 --fixtures，
+    不经过本函数。刷新已缓存仓库（fetch）不受限——不产生新的磁盘占用。
+    """
+    if os.environ.get(_CLONE_GATE_ENV) != "1":
+        raise GitError(
+            "clone 未放行：本地默认禁止 channel-2 克隆"
+            f"（设 {_CLONE_GATE_ENV}=1 放行；CI 自动放行；离线预览用 --fixtures）"
+        )
+
+
 def clone_or_refresh(url: str, dest: Path, *, token: str | None, since_iso: str) -> None:
     """Clone shallow-since 1y with all branches, or refresh an existing clone.
 
@@ -87,6 +106,7 @@ def clone_or_refresh(url: str, dest: Path, *, token: str | None, since_iso: str)
     """
     fetch_url = _authed_url(url, token)
     if not dest.exists():
+        _clone_gate()
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
             _git(

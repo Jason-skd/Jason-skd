@@ -6,9 +6,13 @@ import subprocess
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from main.sources.git_scan import (
+    GitError,
     activity_from_dict,
     activity_to_dict,
+    clone_or_refresh,
     collect_activity,
     refs_fingerprint,
 )
@@ -178,3 +182,30 @@ def test_activity_roundtrip_and_fingerprint(tmp_path: Path) -> None:
     assert restored.language_weights == act.language_weights
     assert restored.commit_count == act.commit_count
     assert refs_fingerprint(repo)  # stable non-empty hash
+
+
+class TestCloneGate:
+    """issue #8 修订：PROFILE_ALLOW_CLONES 门禁——本地默认拒绝克隆并打印提示。"""
+
+    def test_default_refuses_with_hint(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.delenv("PROFILE_ALLOW_CLONES", raising=False)
+        with pytest.raises(GitError, match="PROFILE_ALLOW_CLONES"):
+            clone_or_refresh(
+                "https://github.com/example/repo.git",
+                tmp_path / "repo",
+                token=None,
+                since_iso="2025-01-01 00:00:00 +0000",
+            )
+        assert not (tmp_path / "repo").exists()  # 拒绝时零磁盘残留
+
+    def test_env_var_allows_local_clone(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setenv("PROFILE_ALLOW_CLONES", "1")
+        src = tmp_path / "src.git"
+        subprocess.run(["git", "init", "--bare", "-q", str(src)], check=True, capture_output=True)
+        dest = tmp_path / "dest"
+        clone_or_refresh(str(src), dest, token=None, since_iso="2025-01-01 00:00:00 +0000")
+        assert (dest / ".git").exists()  # 放行后正常走克隆回退链

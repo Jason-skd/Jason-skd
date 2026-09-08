@@ -60,6 +60,7 @@ jobs:
         env:
           PROFILE_PAT: ${{ secrets.PROFILE_PAT }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROFILE_ALLOW_CLONES: "1" # 克隆门禁放行（issue #8 修订）：仅 CI 允许 channel-2 克隆
 
       - name: Commit and push (generated, [skip ci])
         run: |

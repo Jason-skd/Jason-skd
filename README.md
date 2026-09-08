@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://git.io/typing-svg">
-    <img src="https://readme-typing-svg.demolab.com/?lines=wintor_+%C2%B7+CS+%40+SCNU%2FAberdeen;Zig+%26+Go+Minimalism+enthusiasts;AutoBits+%40+SCNUAutoPtr+member;ENTJ+%C2%B7+Commander&font=Fira+Code&size=28&width=750&height=74&color=7aa2f7&center=true&vCenter=true&duration=4000&pause=800&background=0D1117" alt="Typing SVG" />
+    <img src="https://readme-typing-svg.demolab.com/?lines=wintor_+%C2%B7+CS+%40+SCNU%2FAberdeen;Zig+%26+Go+Minimalism+Enthusiasts;AutoBits+%40+SCNUAutoPtr+Member;ENTJ+%C2%B7+Commander&font=Fira+Code&size=28&width=750&height=74&color=7aa2f7&center=true&vCenter=true&duration=4000&pause=800&background=0D1117" alt="Typing SVG" />
   </a>
 </p>
 
@@ -17,7 +17,7 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-22-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1011-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-150-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-22-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1012-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-150-7aa2f7?style=for-the-badge" />
 </p>
 
 <p align="center"><sub>incl. 325 private contributions</sub></p>

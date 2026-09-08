@@ -216,6 +216,7 @@ def _gather(
         {r: a.language_weights for r, a in activities.items()},
         exclude_languages=cfg.excludes.languages,
         top=cfg.languages_top,
+        allowed_types=set(cfg.language_types),
     )
 
     # ---- recent -----------------------------------------------------------

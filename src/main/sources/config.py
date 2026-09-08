@@ -31,6 +31,7 @@ DEFAULT_EXCLUDE_PATHS = [
     "**/deps/**",
 ]
 DEFAULT_LANGUAGES_TOP = 12
+DEFAULT_LANGUAGE_TYPES = ["programming", "markup"]
 
 
 @dataclass
@@ -65,6 +66,7 @@ class ProfileConfig:
     excludes: ExcludeConfig = field(default_factory=ExcludeConfig)
     include_external: bool = True
     languages_top: int = DEFAULT_LANGUAGES_TOP
+    language_types: list[str] = field(default_factory=lambda: list(DEFAULT_LANGUAGE_TYPES))
     exclude_external_recent: bool = True
 
 
@@ -103,6 +105,8 @@ def _build(raw: dict[str, Any]) -> ProfileConfig:
     )
     recent_raw = raw.get("recent_project") or {}
     lang_raw = raw.get("languages_card") or {}
+    # 语言类型白名单（issue #8）落在用户编辑点 languages.types（与 header/icon_height 同块）
+    lang_types = _pick_list(raw.get("languages") or {}, "types", DEFAULT_LANGUAGE_TYPES)
     return ProfileConfig(
         login=str(raw.get("login") or DEFAULT_LOGIN),
         timezone=str(raw.get("timezone") or DEFAULT_TIMEZONE),
@@ -112,6 +116,7 @@ def _build(raw: dict[str, Any]) -> ProfileConfig:
         excludes=excludes,
         include_external=bool(raw.get("include_external", True)),
         languages_top=int(lang_raw.get("top") or DEFAULT_LANGUAGES_TOP),
+        language_types=lang_types,
         exclude_external_recent=bool(recent_raw.get("exclude_external", True)),
     )
 

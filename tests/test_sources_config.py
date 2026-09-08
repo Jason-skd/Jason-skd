@@ -102,3 +102,17 @@ def test_local_profile_yaml_parses(tmp_path: Path) -> None:
     assert cfg.timezone == "Asia/Shanghai"  # frozen key from integrator's file
     assert "wintor76111@gmail.com" in cfg.author_emails
     assert "SCNUAutoPtr/go-ce-v3" in cfg.org.repos
+    assert cfg.language_types == ["programming", "markup"]  # issue #8 白名单落位
+
+
+def test_language_types_default_and_explicit(tmp_path: Path) -> None:
+    assert load_config(tmp_path / "nope.yaml").language_types == ["programming", "markup"]
+    p = tmp_path / "profile.yaml"
+    p.write_text(
+        """
+languages:
+  types: [programming]
+""",
+        encoding="utf-8",
+    )
+    assert load_config(p).language_types == ["programming"]

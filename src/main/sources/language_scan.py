@@ -4,91 +4,37 @@ Weight = sum(added+deleted) over files the user actually touched. Vendored
 code is excluded twice: profile.yaml path globs (primary, works everywhere)
 and each repo's own ``.gitattributes`` ``linguist-vendored/generated``
 markers (secondary guard, own repos only).
+
+语言识别与类型白名单（issue #8）：扩展名/文件名映射和 programming|markup|data|prose
+类型均来自同一份 vendored 快照 ``linguist_data.json``（由
+``python -m main.sources.linguist_regen`` 从上游 languages.yml 生成，离线确定性）。
+辅助格式（data/prose，如 YAML/JSON/SQL/Markdown）由 ``allowed_types`` 白名单过滤，
+不再依赖手动黑名单；``excludes.languages`` 仅保留作用户手动微调（优先级最高）。
+映射表里不存在的语言默认计入并打 WARNING，避免新语言被静默吞掉。
 """
 
 from __future__ import annotations
 
+import json
+import logging
 from fnmatch import fnmatch
 from pathlib import Path
 
-EXTENSION_MAP: dict[str, str] = {
-    ".c": "C",
-    ".h": "C",
-    ".py": "Python",
-    ".pyi": "Python",
-    ".zig": "Zig",
-    ".ts": "TypeScript",
-    ".tsx": "TypeScript",
-    ".mts": "TypeScript",
-    ".cts": "TypeScript",
-    ".js": "JavaScript",
-    ".jsx": "JavaScript",
-    ".mjs": "JavaScript",
-    ".cjs": "JavaScript",
-    ".kt": "Kotlin",
-    ".kts": "Kotlin",
-    ".go": "Go",
-    ".rs": "Rust",
-    ".cpp": "C++",
-    ".cc": "C++",
-    ".cxx": "C++",
-    ".hpp": "C++",
-    ".hh": "C++",
-    ".hxx": "C++",
-    ".cs": "C#",
-    ".java": "Java",
-    ".rb": "Ruby",
-    ".php": "PHP",
-    ".swift": "Swift",
-    ".m": "Objective-C",
-    ".mm": "Objective-C",
-    ".lua": "Lua",
-    ".sql": "SQL",
-    ".sh": "Shell",
-    ".bash": "Shell",
-    ".zsh": "Shell",
-    ".fish": "Shell",
-    ".html": "HTML",
-    ".htm": "HTML",
-    ".css": "CSS",
-    ".scss": "SCSS",
-    ".sass": "SCSS",
-    ".less": "Less",
-    ".vue": "Vue",
-    ".svelte": "Svelte",
-    ".md": "Markdown",
-    ".markdown": "Markdown",
-    ".mdx": "Markdown",
-    ".json": "JSON",
-    ".yaml": "YAML",
-    ".yml": "YAML",
-    ".toml": "TOML",
-    ".xml": "XML",
-    ".r": "R",
-    ".jl": "Julia",
-    ".dart": "Dart",
-    ".scala": "Scala",
-    ".ex": "Elixir",
-    ".exs": "Elixir",
-    ".erl": "Erlang",
-    ".hs": "Haskell",
-    ".pl": "Perl",
-    ".asm": "Assembly",
-    ".s": "Assembly",
-    ".ipynb": "Jupyter Notebook",
-    ".proto": "Protocol Buffers",
-    ".gradle": "Groovy",
-    ".cmake": "CMake",
-}
+logger = logging.getLogger(__name__)
 
-FILENAME_MAP: dict[str, str] = {
-    "makefile": "Makefile",
-    "gnumakefile": "Makefile",
-    "dockerfile": "Dockerfile",
-    "cmakelists.txt": "CMake",
-    "rakefile": "Ruby",
-    "gemfile": "Ruby",
-}
+
+def _load_snapshot() -> dict:
+    with (Path(__file__).parent / "linguist_data.json").open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+_SNAPSHOT = _load_snapshot()
+#: 语言名 -> linguist type（programming|markup|data|prose）
+LINGUIST_TYPES: dict[str, str] = _SNAPSHOT["language_types"]
+#: 扩展名（小写含点）-> 语言名
+EXTENSION_MAP: dict[str, str] = _SNAPSHOT["extensions"]
+#: 文件名（basename 小写）-> 语言名
+FILENAME_MAP: dict[str, str] = _SNAPSHOT["filenames"]
 
 
 def language_for(path: str) -> str | None:
@@ -100,6 +46,11 @@ def language_for(path: str) -> str | None:
     if dot <= 0:
         return None
     return EXTENSION_MAP.get(base[dot:])
+
+
+def language_type(language: str) -> str | None:
+    """Linguist type of a language name; None = 不在 vendored 映射中。"""
+    return LINGUIST_TYPES.get(language)
 
 
 class PathFilter:
@@ -161,13 +112,30 @@ def aggregate_languages(
     *,
     exclude_languages: list[str],
     top: int | None = None,
+    allowed_types: set[str] | None = None,
 ) -> list[dict[str, object]]:
-    """Aggregate per-repo weights into a sorted [{lang, weight, pct}] list."""
+    """Aggregate per-repo weights into a sorted [{lang, weight, pct}] list.
+
+    过滤优先级：``exclude_languages``（用户手动微调）> ``allowed_types``
+    （linguist 类型白名单，None = 不过滤）> 无。白名单外的语言静默跳过
+    （data/prose 属预期行为）；不在 linguist 映射中的未知语言默认计入并
+    打 WARNING。占比在过滤后的集合上重新归一。
+    """
     totals: dict[str, int] = {}
     for weights in per_repo.values():
         for lang, weight in weights.items():
             if lang in exclude_languages or weight <= 0:
                 continue
+            if allowed_types is not None:
+                lang_type = LINGUIST_TYPES.get(lang)
+                if lang_type is None:
+                    logger.warning(
+                        "未知语言 %r 不在 linguist 映射中，默认计入统计（可加入"
+                        " excludes.languages 排除）",
+                        lang,
+                    )
+                elif lang_type not in allowed_types:
+                    continue
             totals[lang] = totals.get(lang, 0) + weight
     grand = sum(totals.values())
     ordered = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))

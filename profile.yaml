@@ -76,7 +76,7 @@ excludes:
   repos: []
   # 语言手动微调专用（优先级最高）；Markdown/JSON/SQL/YAML 等辅助格式已由
   # languages.types 白名单自动排除，无需在此列举（issue #8）
-  languages: []
+  languages: [Groovy, ]
   # 显式列表会整体覆盖代码默认值，故默认 vendor 类目录必须一并列全
   paths:
     - "**/vendor/**"

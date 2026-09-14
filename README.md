@@ -17,7 +17,7 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-23-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1238-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-156-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-23-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1239-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-156-7aa2f7?style=for-the-badge" />
 </p>
 
 <p align="center"><sub>incl. 547 private contributions</sub></p>
@@ -27,7 +27,7 @@
 <h3 align="center">🧑‍💻 Languages</h3>
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 40.6%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 18.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 18.2%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 10.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 8.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 1.3%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg" height="48" alt="Shell" title="Shell 0.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<sub><b>Groovy</b> 0.5%</sub>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 40.8%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 18.8%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 18.3%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 10.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 8.8%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 1.3%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg" height="48" alt="Shell" title="Shell 0.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg" height="48" alt="C" title="C 0.3%" />
 </p>
 
 ---

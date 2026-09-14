@@ -60,7 +60,6 @@ languages:
   # （data: YAML/JSON/TOML/SQL…；prose: Markdown…）。想去掉 CSS 这类 markup 就删掉 markup。
   types:
     - programming
-    - markup
 
 org_card:
   enabled: true

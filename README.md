@@ -17,10 +17,10 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-23-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1239-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-156-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-23-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1254-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-156-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>incl. 547 private contributions</sub></p>
+<p align="center"><sub>incl. 562 private contributions</sub></p>
 
 ---
 
@@ -43,9 +43,9 @@
 <h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/Jason-skd/NMMC"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="NMMC" /></a>
-  <br/><b>NMMC</b>
-  <br/><sub>17 commits yesterday</sub>
+  <a href="https://github.com/Jason-skd/go-ce-v4"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="go-ce-v4" /></a>
+  <br/><b>go-ce-v4</b>
+  <br/><sub>13 commits yesterday</sub>
 </p>
 
 <p align="center">

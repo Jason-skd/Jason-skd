@@ -17,10 +17,10 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-21-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1304-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-157-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-21-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1317-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-158-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>incl. 612 private contributions</sub></p>
+<p align="center"><sub>incl. 625 private contributions</sub></p>
 
 ---
 

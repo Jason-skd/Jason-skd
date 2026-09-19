@@ -3,14 +3,24 @@
 本文件是本仓库 AI 协作的常驻入口。治理内容由本仓库独立维护，不动态
 继承、跟踪或同步任何外部治理仓库。
 
-开始实质工作前，按任务需要读取：
+## 治理层次
 
-- [`docs/governance/workflow.md`](docs/governance/workflow.md)：任务分类、调查、
-  实施和交付流程。
-- [`docs/governance/engineering.md`](docs/governance/engineering.md)：设计、实现、
-  测试和完成标准。
-- [`docs/governance/repository.md`](docs/governance/repository.md)：本仓库的事实来源、
-  架构边界和验证入口。
+以下文件共同构成本仓库的通用治理基线：
+
+- 本文件：常驻的授权、证据、工作区和交付边界；
+- [`docs/governance/workflow.md`](docs/governance/workflow.md)：任务分类、调查、实施和
+  交付流程；
+- [`docs/governance/engineering.md`](docs/governance/engineering.md)：设计、实现、测试和
+  完成标准。
+
+[`docs/governance/repository.md`](docs/governance/repository.md) 记录本仓库特有的门禁、
+事实来源、架构边界和验证入口，不属于通用治理基线。任何涉及文件或 Git 状态变更的
+任务都必须读取。仓库特有规则默认只能补充或收紧基线；未经用户显式授权，不得删除、
+放宽、替换基线规则或引入与其冲突的约束。通用实施授权不能绕过仓库特有门禁。
+
+通用治理基线默认保持不变。若工作中发现可能适用于所有仓库的候选规则，应在写入前
+向用户说明适用范围、理由和影响，并征询是否将其纳入基线。获得明确授权前，只能将其
+作为建议报告，不得顺带写入。
 
 ## 权威与证据
 

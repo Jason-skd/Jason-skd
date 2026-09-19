@@ -17,4 +17,4 @@
 - [AI 治理入口](AGENTS.md)：授权、证据、工作区与交付边界。
 - [AI 工作流治理](docs/governance/workflow.md)：调查、实施、提交与交付流程。
 - [通用工程约束](docs/governance/engineering.md)：设计、实现、测试与完成标准。
-- [本仓库工程边界](docs/governance/repository.md)：当前状态与项目权威来源。
+- [本仓库治理与工程边界](docs/governance/repository.md)：特有门禁、当前状态与项目权威来源。

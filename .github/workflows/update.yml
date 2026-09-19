@@ -9,6 +9,9 @@
 #   3. push 到 main 且仅当源文件变化（paths 过滤）——防生成物回推触发循环；
 #      生成提交还带 [skip ci] 双保险。
 #
+# 默认分支可以独立于生成基线演进；定时和手动运行必须显式读取 main，
+# 生成提交也显式推回 main，避免依赖 GitHub 默认分支的隐式行为。
+#
 # 失败语义：生成或校验门失败 → 不 commit、不 push，旧 README 原样保留。
 #
 # 令牌：PROFILE_PAT（classic, repo scope）用于私有 org 仓库取数；
@@ -46,6 +49,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -74,4 +79,4 @@ jobs:
             exit 0
           fi
           git commit -m "chore(readme): auto update $(date -u +%F) [skip ci]"
-          git push
+          git push origin HEAD:main

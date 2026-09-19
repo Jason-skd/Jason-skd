@@ -1,0 +1,6 @@
+{
+  "theme": { "accent": "7aa2f7" },
+  "timezone": "Asia/Shanghai",
+  "excludes": { "repos": [], "languages": [], "paths": [] },
+  "height": 200
+}

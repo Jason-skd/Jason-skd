@@ -9,28 +9,24 @@
 
 主页可以使用 Zig 重写，MVP 不需要创建或维护任何额外的独立仓库。
 
-所有逻辑都先保留在本仓库中，但必须按职责严格拆分为内部模块。模块之间通过明确
-的数据类型和窄接口协作，业务聚合层不能直接承担 HTTP、子进程、文件写入或语言
-识别等基础职责。只有未来出现第二个真实消费者时，才重新评估将某个内部模块发布
-为独立库。
+所有逻辑都先保留在本仓库中，但必须按职责严格拆分为内部模块。模块之间通过明确的数据类型和窄接口协作，业务聚合层不能直接承担 HTTP、子进程、文件写入或语言识别等基础职责。只有未来出现第二个真实消费者时，才重新评估将某个内部模块发布为独立库。
 
 锁定的技术选择如下：
 
-| 能力 | 选择 |
-| --- | --- |
-| Zig 版本 | 当前项目锁定的 Zig 0.17 开发版本 |
-| 参数解析 | `zig-clap` |
-| YAML 解析 | `ymlz` |
-| HTTP | `std.http` |
-| JSON | `std.json` |
-| GraphQL | `std.http` POST + `std.json`，不引入 GraphQL 专用库 |
-| Git | 调用系统 `git` CLI |
-| Markdown/HTML 输出 | 标准库 Writer 和格式化 API |
-| 模板引擎 | 不使用 |
-| 时区 | MVP 将 `Asia/Shanghai` 按固定 UTC+8 处理 |
+| 能力               | 选择                                                |
+| ------------------ | --------------------------------------------------- |
+| Zig 版本           | 当前项目锁定的 Zig 0.17 开发版本                    |
+| 参数解析           | `zig-clap`                                          |
+| YAML 解析          | `ymlz`                                              |
+| HTTP               | `std.http`                                          |
+| JSON               | `std.json`                                          |
+| GraphQL            | `std.http` POST + `std.json`，不引入 GraphQL 专用库 |
+| Git                | 调用系统 `git` CLI                                  |
+| Markdown/HTML 输出 | 标准库 Writer 和格式化 API                          |
+| 模板引擎           | 不使用                                              |
+| 时区               | MVP 将 `Asia/Shanghai` 按固定 UTC+8 处理            |
 
-依赖在接入时必须由当前锁定的 Zig 0.17 编译器实际构建和测试。兼容性验证属于实施
-工作，不再重新开启选型讨论。
+依赖在接入时必须由当前锁定的 Zig 0.17 编译器实际构建和测试。兼容性验证属于实施工作，不再重新开启选型讨论。
 
 ## 二、现有主页的功能边界
 
@@ -49,8 +45,7 @@
 - 通过 REST 获取组织和仓库补充信息。
 - 处理认证、重试、HTTP 错误、GraphQL `errors` 和 token 脱敏。
 
-Python 版没有使用 GraphQL 客户端库。它通过 `requests` 手写 HTTP POST，提交
-`query` 和 `variables`，再手动读取 JSON 字段。Zig 版继续采用相同的薄实现思路。
+Python 版没有使用 GraphQL 客户端库。它通过 `requests` 手写 HTTP POST，提交 `query` 和 `variables`，再手动读取 JSON 字段。Zig 版继续采用相同的薄实现思路。
 
 ### Git 活动与语言统计
 
@@ -91,8 +86,7 @@ Python 版没有使用 GraphQL 客户端库。它通过 `requests` 手写 HTTP P
 
 ### 有意缩减
 
-Git 活动模块只实现主页实际需要的最小集合。MVP 不提前复刻 Python 版的全部 clone、
-refresh、降级和缓存策略，具体以主页所需数据字段为边界。
+Git 活动模块只实现主页实际需要的最小集合。MVP 不提前复刻 Python 版的全部 clone、refresh、降级和缓存策略，具体以主页所需数据字段为边界。
 
 语言识别只实现：
 
@@ -135,13 +129,11 @@ excludes:
 - 通用缓存库；
 - 任何新的独立仓库。
 
-MVP 配置 schema 不接受 `excludes`。如果旧配置仍保留该字段，应明确返回配置错误，
-不能静默接受后忽略，避免用户误以为排除规则已经生效。
+MVP 配置 schema 不接受 `excludes`。如果旧配置仍保留该字段，应明确返回配置错误，不能静默接受后忽略，避免用户误以为排除规则已经生效。
 
 ## 四、内部模块设计
 
-下列名称是职责名称；实施时可以按 Zig 命名惯例调整文件名，但不得将职责重新混入
-`main.zig` 或单个大型模块。
+下列名称是职责名称；实施时可以按 Zig 命名惯例调整文件名，但不得将职责重新混入 `main.zig` 或单个大型模块。
 
 ### `cli`
 
@@ -174,13 +166,11 @@ MVP 配置 schema 不接受 `excludes`。如果旧配置仍保留该字段，应
 - token 脱敏；
 - 可注入 transport 或等价测试边界。
 
-GraphQL helper 只负责序列化 `{query, variables}` 和解析 `{data, errors}`，不解析
-GraphQL 语法，也不实现动态 query builder。
+GraphQL helper 只负责序列化 `{query, variables}` 和解析 `{data, errors}`，不解析 GraphQL 语法，也不实现动态 query builder。
 
 ### `github/models` 与数据源
 
-负责声明 GitHub 响应和主页所需的领域类型。账户、组织、仓库等数据源只依赖
-`github/client` 的窄接口，不直接操作底层 HTTP client。
+负责声明 GitHub 响应和主页所需的领域类型。账户、组织、仓库等数据源只依赖 `github/client` 的窄接口，不直接操作底层 HTTP client。
 
 ### `json`
 
@@ -216,14 +206,11 @@ GraphQL 语法，也不实现动态 query builder。
 - 解析必要的 `git log`/`numstat` 输出；
 - 返回结构化活动数据。
 
-MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存。仓库和临时目录
-只服务于单次运行，并由该模块或调用方明确清理。未来发现真实性能问题后，再为此
-模块设计专用缓存，不抽象成通用缓存库。
+MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存。仓库和临时目录只服务于单次运行，并由该模块或调用方明确清理。未来发现真实性能问题后，再为此模块设计专用缓存，不抽象成通用缓存库。
 
 ### `language_catalog` 与 `language_stats`
 
-这两个模块共同承担此前讨论中的 “Linguist-lite” 职责。`Linguist-lite` 只是描述，
-不是要创建或兼容一个名为 Linguist-lite 的外部项目。
+这两个模块共同承担此前讨论中的 “Linguist-lite” 职责。`Linguist-lite` 只是描述，不是要创建或兼容一个名为 Linguist-lite 的外部项目。
 
 `language_catalog` 负责：
 
@@ -238,17 +225,13 @@ MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存�
 - 只保留 `programming` 类型；
 - 聚合、排序和计算百分比。
 
-快照在运行时不联网更新。更新快照是显式的维护操作，生成脚本和快照元数据应记录
-上游来源；MVP 不要求生成脚本本身使用 Zig。
+快照在运行时不联网更新。更新快照是显式的维护操作，生成脚本和快照元数据应记录上游来源；MVP 不要求生成脚本本身使用 Zig。
 
 ### `clock`
 
-负责 Unix 时间、UTC API 时间范围、自然日分桶和格式化。MVP 中唯一支持的主页时区
-是 `Asia/Shanghai`，实现为固定 UTC+8。
+负责 Unix 时间、UTC API 时间范围、自然日分桶和格式化。MVP 中唯一支持的主页时区是 `Asia/Shanghai`，实现为固定 UTC+8。
 
-当前 Zig 0.17 的 `std.Tz` 能解析 TZif，但不自带通过 `Asia/Shanghai` 名称直接查询
-的跨平台 IANA 数据库。当前主页不需要为这一点引入 tzdata。未来需要任意 IANA
-时区或夏令时时，再扩展该模块。
+当前 Zig 0.17 的 `std.Tz` 能解析 TZif，但不自带通过 `Asia/Shanghai` 名称直接查询的跨平台 IANA 数据库。当前主页不需要为这一点引入 tzdata。未来需要任意 IANA 时区或夏令时时，再扩展该模块。
 
 ### `components` 与 `assemble`
 
@@ -309,19 +292,16 @@ typed config ---------> GitHub client ------> REST / GraphQL
                   stdout            atomic README
 ```
 
-GitHub client、Git 活动、语言统计和渲染之间不得交换无约束的通用 JSON tree。模块
-边界使用明确的 Zig struct，使字段缺失和类型变化尽可能在边界处失败。
+GitHub client、Git 活动、语言统计和渲染之间不得交换无约束的通用 JSON tree。模块边界使用明确的 Zig struct，使字段缺失和类型变化尽可能在边界处失败。
 
 ## 六、Python 版缓存的处理
 
 Python 版存在两类运行缓存：
 
 - `.cache/repos/` 保存克隆的仓库；
-- `.cache/scan_cache.json` 保存每个仓库的 refs fingerprint、时间窗口、过滤配置
-  hash、每日提交数、语言权重、最近提交时间和提交总数。
+- `.cache/scan_cache.json` 保存每个仓库的 refs fingerprint、时间窗口、过滤配置 hash、每日提交数、语言权重、最近提交时间和提交总数。
 
-它可以在输入未变化时跳过 `git log` 重扫，也可以在网络刷新失败且 refs 未变化时
-使用旧扫描结果。但当前 GitHub Actions 没有持久化 `.cache`，跨任务收益有限。
+它可以在输入未变化时跳过 `git log` 重扫，也可以在网络刷新失败且 refs 未变化时使用旧扫描结果。但当前 GitHub Actions 没有持久化 `.cache`，跨任务收益有限。
 
 MVP 不迁移这套缓存：
 

@@ -319,3 +319,4 @@ docgen_tmp/
 ### zig Patch ###
 
 .zig-cache/
+zig-pkg/

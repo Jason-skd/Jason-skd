@@ -89,6 +89,23 @@ test {
 
 验证基于 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。项目测试用真实子进程覆盖双流捕获、cwd、环境覆盖、stdin EOF、非零与 signal 结束、独立输出上限、总 timeout 和 future cancellation；脱敏测试覆盖重叠或重复 secret、空 secret、credential URL、多个 `@`、引号边界、malformed URL 和逐 allocation 失败清理，并分别观察 allocator wrapper 与直接 `rawFree` 路径的释放前清零。若 `process.run` 不再使用循环 fill、环境 map 或 `Allocator.free` 改变释放语义、URI formatter 改变 authentication 行为，或 allocating writer 获得可注入的安全释放策略，必须重新核对本节。
 
+## HTTP 响应与 typed JSON 所有权
+
+适用范围：读取完整 HTTP response body 后，通过 `std.json` 绑定含字符串或切片字段的 Zig struct。
+
+- `std.json.parseFromSlice` 默认使用 `.alloc_if_needed`，解析结果可能直接引用输入 slice。若 response body 会在 helper 返回前释放，必须设置 `.allocate = .alloc_always`，并让调用方最终调用 `std.json.Parsed(T).deinit()`。
+- GitHub API 响应使用 `.ignore_unknown_fields = true` 保持向前兼容；不要改变默认的重复字段报错，也不要为必需字段提供默认值。API 可返回 `null` 的字段必须显式使用 optional 类型。
+- `std.http.Client.Request.RedirectBehavior.unhandled` 表示把 3xx response 交给调用方，且不会自动向新地址重发请求。携带 Authorization 且不需要跳转的 API client 应使用该模式，以便保留状态分类并避免凭据跨地址转发；`.not_allowed` 会在收到跳转时返回 `error.TooManyHttpRedirects`。
+
+关键源码：
+
+- `../zig/lib/std/json/static.zig`：`ParseOptions.allocate`、`parseFromSlice`、`Parsed(T).deinit`
+- `../zig/lib/std/json/static_test.zig`：typed struct、optional、未知字段和重复字段测试
+- `../zig/lib/std/http/Client.zig`：`Request.RedirectBehavior`、`Request.receiveHead`、`Request.redirect`、`Request.deinit`
+- `../zig/lib/std/http/test.zig`：request/response body 和 header 读取测试
+
+验证基线为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。本仓库通过释放原 response buffer 后继续读取 typed 字符串、离线 transport 状态分类及 `zig build test` 验证这些结论；工具链 API 或 response 生命周期变化时必须重新核对。
+
 ## 远端依赖与包身份
 
 适用范围：`build.zig.zon` 中的远端依赖。

@@ -6,6 +6,9 @@ pub const config = @import("config.zig");
 /// CLI parsing, diagnostics, and credential resolution.
 pub const cli = @import("cli.zig");
 
+/// GitHub API integration used by the profile generator.
+pub const github = @import("github/root.zig");
+
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {
     _ = init;
@@ -16,4 +19,5 @@ test {
     _ = cli;
     _ = @import("dependency_validation.zig");
     _ = @import("process.zig");
+    _ = github;
 }

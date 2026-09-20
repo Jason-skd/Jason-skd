@@ -1,0 +1,12 @@
+login: neutral-example
+timezone: Asia/Shanghai
+theme:
+author_emails:
+  - neutral@example.test
+window_days: 14
+sections:
+  - banner
+typing:
+  width: 600
+excludes:
+  repos:

@@ -1,5 +1,8 @@
 const std = @import("std");
 
+/// Profile YAML parsing, validation, and normalized configuration types.
+pub const config = @import("config.zig");
+
 /// CLI parsing, diagnostics, and credential resolution.
 pub const cli = @import("cli.zig");
 
@@ -9,6 +12,7 @@ pub fn run(init: std.process.Init) !void {
 }
 
 test {
+    _ = config;
     _ = cli;
     _ = @import("dependency_validation.zig");
 }

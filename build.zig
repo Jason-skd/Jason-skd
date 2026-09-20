@@ -43,11 +43,43 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the profile generator");
     run_step.dependOn(&run_command.step);
 
-    const tests = b.addTest(.{
+    const unit_tests = b.addTest(.{
+        .name = "unit-tests",
         .root_module = app_module,
     });
-    const run_tests = b.addRunArtifact(tests);
+    const run_unit_tests = b.addRunArtifact(unit_tests);
+
+    const integration_tests = b.addTest(.{
+        .name = "config-integration-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/config_integration.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "profile_generator", .module = app_module },
+            },
+        }),
+    });
+    const run_integration_tests = b.addRunArtifact(integration_tests);
+
+    const production_config_options = b.addOptions();
+    production_config_options.addOptionPath("profile_path", b.path("profile.yaml"));
+    const production_config_tests = b.addTest(.{
+        .name = "production-config-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/config_production.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "profile_generator", .module = app_module },
+                .{ .name = "production_config_options", .module = production_config_options.createModule() },
+            },
+        }),
+    });
+    const run_production_config_tests = b.addRunArtifact(production_config_tests);
 
     const test_step = b.step("test", "Run all tests");
-    test_step.dependOn(&run_tests.step);
+    test_step.dependOn(&run_unit_tests.step);
+    test_step.dependOn(&run_integration_tests.step);
+    test_step.dependOn(&run_production_config_tests.step);
 }

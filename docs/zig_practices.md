@@ -81,10 +81,39 @@ Issue #13 调查期间曾观察到 `N-V-.../<repository>-<commit>/build.zig.zon`
 
 | 依赖            | revision                                   | 导入模块 | 验证                                             |
 | --------------- | ------------------------------------------ | -------- | ------------------------------------------------ |
-| zig-clap 0.12.0 | `05faf3905e8548f5cc269a8836e154065e70128d` | `clap`   | 参数声明 smoke test；上游默认构建和测试          |
-| ymlz 0.7.1 fork | `e0fe6a73b5df0fa8a37128c582514cba44b985d2` | `root`   | typed mapping `loadRaw` smoke test；上游默认构建 |
+| zig-clap 0.12.0 | `05faf3905e8548f5cc269a8836e154065e70128d` | `clap`   | CLI 解析、诊断和借用单测；上游默认构建和测试              |
+| ymlz 0.7.1 fork | `e0fe6a73b5df0fa8a37128c582514cba44b985d2` | `root`   | typed mapping smoke、配置分层测试；上游默认构建和测试      |
 
 ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`，因此从包缓存运行其完整 fixture 测试会得到 `FileNotFound`。这不影响项目内实际调用公开解析 API 的 smoke test；升级依赖时仍需在完整 checkout 中重新运行上游测试。
+
+## ymlz Typed Binding 的校验边界
+
+适用范围：把不受信任的 YAML 配置绑定到当前项目的显式 struct；不适用于开发通用 YAML parser。
+
+- 锁定的 ymlz `Ymlz(T).parse` 遇到未知字段会 `@panic`，按字段数推进解析而不检测重复键，并以 `undefined` 初始化目标后只将 optional 字段置空。缺失的非 optional 字段因此不能作为调用方可观察的配置错误。
+- ymlz 的 optional numeric 字段存在时会把 `?T` 传给只识别裸 `.int`/`.float` 的 numeric parser，返回 `error.UnrecognizedSimpleType`。配置边界应先按 schema 校验 scalar，再把这类 raw 值绑定为 optional text，并在归一化阶段转换为目标数字类型。
+- 在 typed binding 前使用仅理解项目 mapping 层级、允许键和 list 形状的 validated reader。它负责拒绝未知键、重复键、旧入口、危险缩进和非法 scalar；不能借此扩张成第二套通用 YAML 实现。
+- ymlz parser 和 raw result 可以放在临时 `ArenaAllocator` 中。这样 `loadReader` 任意错误都由 arena 统一清理，不需要在没有完整 result 时调用 `Ymlz.deinit`；校验后的公开结果再复制到独立 arena。
+- 对外 parsed result 采用 `std.json.Parsed` 的所有权模式：结构体持有 `*ArenaAllocator` 和 typed value，`deinit` 先保存 child allocator，再释放 arena 并销毁 arena 对象。成功结果不得借用输入；失败诊断若借用 offending text，API 文档必须声明其生命周期。
+
+## 解析器适配器与返回值所有权
+
+这些结论来自当前 Zig revision 的标准库和锁定的 ymlz 源码，可复用于其他 typed text/config parser：
+
+- ymlz 的 `Ymlz(Destination)` 是按目标 struct 生成的 parser 类型；`init(allocator)` 创建 parser 实例，`loadRaw` 只是构造内置 `RawReader` 后转调 `loadReader`，而 `loadReader` 要求传入对象提供 `readLine(allocator) !?[]const u8`。因此文件、内存和预检后的文本可以共享同一 typed binding，而不必让 ymlz 负责输入来源。
+- ymlz 的 parser 实例同时记录自己分配的字符串/列表；官方测试在成功解析后调用 `ymlz.deinit(result)`。若调用方把 parser 和 raw result 都放进临时 arena，则错误路径可由 arena 统一回收；只有把结果复制到独立拥有的 arena 后，才能让临时 parser 生命周期结束。
+- `std.json.parseFromTokenSource` 是当前 Zig 对 arena-owned 返回值的直接模板：先由父 allocator 分配 `ArenaAllocator` 对象，再用 `errdefer` 覆盖对象分配和 arena 初始化失败，最后把解析结果放进 arena；成功时返回 `Parsed(T)`，由调用方显式 `deinit`。
+- `ArenaAllocator.init(child_allocator)` 中的 child allocator 是 arena 释放内部 block 时使用的父 allocator。`arena.deinit()` 只释放 arena 管理的 block；如果 `ArenaAllocator` 结构体本身也由父 allocator 分配，必须另行用保存下来的 child allocator `destroy` 它。
+- Zig 语言参考定义 `defer` 为离开作用域时无条件执行，`errdefer` 仅在从该作用域错误退出时执行。临时输入/parser 使用 `defer`；只有成功返回后转移给调用方的资源，才使用 `errdefer` 保护构造失败路径。
+
+关键源码：
+
+- `zig-pkg/ymlz-0.7.1-TG82aTbZAABsQ7DIERSAObNJNviwTHhtzM_KO-L3Xgo_/src/root.zig`：`Ymlz`、`loadReader`、`parse`、`parseField`、`parseBooleanExpression`、`parseNumericExpression`、`deinit`
+- `../../zig/lib/std/heap/ArenaAllocator.zig`：`init`、`allocator`、`deinit`
+- `../../zig/lib/std/json/static.zig`：`Parsed`、`parseFromTokenSource`
+- `../../zig/doc/langref.html.in`：`defer` 与 `errdefer` 语义
+
+验证方式：配置单元、公开 API 集成和生产配置 E2E artifacts 全部通过；`std.testing.checkAllAllocationFailures` 穷举验证 parse 成功路径的分配失败清理。若升级 ymlz 或 Zig revision，必须重新检查上述解析和 arena 所有权实现，尤其是 optional struct/numeric 与错误清理行为。
 
 ## CLI 切片与环境凭据的借用
 

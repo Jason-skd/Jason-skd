@@ -58,6 +58,32 @@ test {
 
 这是当前标准库用于聚合子模块测试的常见形式，可在 `std/json.zig`、`std/fs.zig`、`std/Random.zig` 和 `std/Io/Threaded.zig` 等文件中找到。新增模块的测试应由最近的模块根纳入，而不是依靠未被引用的文件自动发现。
 
+## 有界子进程与敏感缓冲区
+
+适用范围：需要捕获输出、继承或覆盖环境并可能处理凭据的内部子进程 adapter。
+
+- `std.process.run` 使用 argv 直接启动进程，把 stdin 设为 `ignore`，通过 `Io.File.MultiReader` 同时读取 stdout 和 stderr，并以 `defer child.kill(io)` 覆盖 timeout、取消、输出超限和读取失败后的终止与等待。正常返回的 `Child.Term` 保留非零退出、signal、stopped 和 unknown；调用方不应把这些结构化结束状态折叠为 spawn 错误。
+- `process.run` 的读取循环会把同一个 `RunOptions.timeout` 传给每次 `MultiReader.fill`。`Io.Timeout.duration` 在每次等待时都表示一段新的相对时长，因此要求整条命令共享总时限时，应在进入 `process.run` 前调用 `timeout.toDeadline(io)` 一次，将其固定为 absolute deadline。`error.Timeout` 和 `error.Canceled` 保持在 `process.RunError` 中，不转换为退出状态。
+- `process.Environ.Map` 独立拥有每个键和值。`put` 和 `putMove` 会断言键合法，覆盖值和 `deinit` 都会直接释放内存；敏感环境 adapter 应先用 `validateKeyForPut` 和 NUL 检查返回普通错误，再复制数据。覆盖前清零旧值，失败路径与最终销毁前清零全部值，避免把调用方 map 的所有权或可变性带入子进程层。
+- `Uri.parse` 返回借用输入的 component；对解析成功且带 userinfo 的 HTTP(S) URL，可用 `Uri.writeToStream` 并关闭 `Format.Flags.authentication` 重新格式化。authority 明确含 `@` 但解析失败的候选 URL 应整体替换，避免 malformed credential 逃逸。之后再按长度降序替换非空显式 secret，防止较短前缀先替换而保留较长 secret 的尾部。
+- `crypto.secureZero` 通过 volatile slice 防止清零被优化掉。`process.run` 的错误路径会在内部释放尚未返回的输出和环境 block；需要保证这些内存也清零时，可为这次调用提供局部 allocator wrapper，在 `free` 前清零，并让 `resize`、`remap` 返回失败以迫使增长走 allocate-copy-secure-free。wrapper 只能在它分配的全部内存于当前调用内释放时使用，不能让返回 allocation 超过 wrapper context 的生命周期。
+- 敏感 `Writer.Allocating` 不能依赖自动增长，因为 `ensureTotalCapacityPrecise` 可能复制后直接释放旧 allocation；应一次性保守预分配，最终复制出拥有型结果，再清零整个中间 capacity 后释放。每次 secret 替换产生的新旧 owned slice 也应在交接所有权时清零旧 slice。
+
+关键源码：
+
+- `../zig/lib/std/process.zig`：`RunError`、`RunOptions`、`RunResult`、`run`
+- `../zig/lib/std/process/Child.zig`：`Term`、`Term.success`、`kill`、`wait`
+- `../zig/lib/std/Io.zig`：`Timeout.toDeadline`、`Future.cancel`、`concurrent`
+- `../zig/lib/std/Io/File/MultiReader.zig`：`fill`、`deinit`、`toOwnedSlice`
+- `../zig/lib/std/process/Environ.zig`：`Map.validateKeyForPut`、`putMove`、`clone`、`deinit`
+- `../zig/lib/std/Uri.zig`：`parse`、`writeToStream`、`Format.Flags.authentication`
+- `../zig/lib/std/crypto.zig`：`secureZero`
+- `../zig/lib/std/mem/Allocator.zig`：`VTable`、`rawAlloc`、`rawFree`
+- `../zig/lib/std/testing/FailingAllocator.zig`：allocator wrapper 的 vtable 实现模式
+- `../zig/lib/std/Io/Writer.zig`：`Allocating.ensureTotalCapacityPrecise`、`toOwnedSlice`
+
+验证基于 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。项目测试用真实子进程覆盖双流捕获、cwd、环境覆盖、stdin EOF、非零与 signal 结束、独立输出上限、总 timeout 和 future cancellation；脱敏测试覆盖重叠或重复 secret、空 secret、credential URL、多个 `@`、引号边界、malformed URL 和逐 allocation 失败清理。若 `process.run` 不再使用循环 fill、环境 map 改变释放语义、URI formatter 改变 authentication 行为，或 allocating writer 获得可注入的安全释放策略，必须重新核对本节。
+
 ## 远端依赖与包身份
 
 适用范围：`build.zig.zon` 中的远端依赖。

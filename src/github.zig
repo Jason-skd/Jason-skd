@@ -1,16 +1,14 @@
 //! GitHub REST and GraphQL integration for the profile generator.
 
-const client = @import("client.zig");
+const client = @import("github/client.zig");
 
 /// Typed GitHub REST and GraphQL client with owned transport resources.
 pub const Client = client.Client;
-/// Dependencies and policy used to initialize a GitHub client.
+/// Caller-provided values that determine GitHub request behavior.
 pub const Config = client.Config;
 /// Retry policy whose attempt count includes the initial request.
 pub const RetryConfig = client.RetryConfig;
-/// Type-erased wait operation used to make retry tests deterministic.
-pub const Waiter = client.Waiter;
-/// Type-erased request executor used by deterministic tests.
+/// Type-erased request sender used by deterministic tests.
 pub const Transport = client.Transport;
 /// One HTTP header passed across the injectable transport boundary.
 pub const Header = client.Header;
@@ -29,9 +27,9 @@ pub const Result = client.Result;
 
 test {
     _ = client;
-    _ = @import("client_test.zig");
-    _ = @import("json.zig");
-    _ = @import("redact.zig");
-    _ = @import("retry.zig");
-    _ = @import("transport.zig");
+    _ = @import("github/client_test.zig");
+    _ = @import("github/json.zig");
+    _ = @import("github/redact.zig");
+    _ = @import("github/retry.zig");
+    _ = @import("github/transport.zig");
 }

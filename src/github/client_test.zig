@@ -1,4 +1,4 @@
-//! Deterministic GitHub client tests backed by injected transport and waiting.
+//! Deterministic GitHub client tests backed by an injected transport and I/O.
 
 const std = @import("std");
 
@@ -9,6 +9,7 @@ const FailureKind = github.FailureKind;
 const Header = github.Header;
 const RawResponse = github.RawResponse;
 const Request = github.Request;
+const test_user_agent = "github-client-test";
 
 const FakeResponse = struct {
     status: std.http.Status,
@@ -22,7 +23,7 @@ const FakeTransport = struct {
     expect_login_variable: bool = false,
     calls: usize = 0,
 
-    fn execute(context: *anyopaque, allocator: std.mem.Allocator, request: Request) anyerror!RawResponse {
+    fn send(context: *anyopaque, allocator: std.mem.Allocator, request: Request) anyerror!RawResponse {
         const self: *@This() = @ptrCast(@alignCast(context));
         const response = self.responses[@min(self.calls, self.responses.len - 1)];
         self.calls += 1;
@@ -31,24 +32,13 @@ const FakeTransport = struct {
         try std.testing.expect(request.payload == null);
         try std.testing.expect(hasHeader(request.headers, "Accept", "application/vnd.github+json"));
         try std.testing.expect(hasHeader(request.headers, "X-GitHub-Api-Version", github.api_version));
-        try std.testing.expect(hasHeader(request.headers, "User-Agent", github.default_user_agent));
+        try std.testing.expect(hasHeader(request.headers, "User-Agent", test_user_agent));
         if (self.expect_secret) {
             try std.testing.expect(hasHeader(request.headers, "Authorization", "Bearer SECRET"));
         } else {
             try std.testing.expect(!hasHeaderName(request.headers, "Authorization"));
         }
         return RawResponse.init(allocator, response.status, response.headers, response.body);
-    }
-};
-
-const WaitLog = struct {
-    durations: [8]std.Io.Duration = undefined,
-    len: usize = 0,
-
-    fn wait(context: *anyopaque, duration: std.Io.Duration) anyerror!void {
-        const self: *@This() = @ptrCast(@alignCast(context));
-        self.durations[self.len] = duration;
-        self.len += 1;
     }
 };
 
@@ -66,14 +56,14 @@ fn hasHeaderName(headers: []const Header, name: []const u8) bool {
     return false;
 }
 
-fn graphqlFakeExecute(context: *anyopaque, allocator: std.mem.Allocator, request: Request) anyerror!RawResponse {
+fn graphqlFakeSend(context: *anyopaque, allocator: std.mem.Allocator, request: Request) anyerror!RawResponse {
     const self: *FakeTransport = @ptrCast(@alignCast(context));
     try std.testing.expectEqual(std.http.Method.POST, request.method);
     try std.testing.expectEqualStrings(github.graphql_url, request.url);
     try std.testing.expect(request.payload != null);
     try std.testing.expect(std.mem.indexOf(u8, request.payload.?, "Viewer") != null);
     if (self.expect_login_variable) {
-        try std.testing.expect(std.mem.indexOf(u8, request.payload.?, "Jason-skd") != null);
+        try std.testing.expect(std.mem.indexOf(u8, request.payload.?, "octocat") != null);
     }
     try std.testing.expect(hasHeader(request.headers, "Content-Type", "application/json"));
     const response = self.responses[@min(self.calls, self.responses.len - 1)];
@@ -81,7 +71,7 @@ fn graphqlFakeExecute(context: *anyopaque, allocator: std.mem.Allocator, request
     return RawResponse.init(allocator, response.status, response.headers, response.body);
 }
 
-fn failingExecute(_: *anyopaque, _: std.mem.Allocator, _: Request) anyerror!RawResponse {
+fn failingSend(_: *anyopaque, _: std.mem.Allocator, _: Request) anyerror!RawResponse {
     return error.ConnectionResetByPeer;
 }
 
@@ -89,21 +79,24 @@ fn restAllocationFailure(allocator: std.mem.Allocator) !void {
     const Payload = struct { login: []const u8 };
     const responses = [_]FakeResponse{.{
         .status = .ok,
-        .body = "{\"login\":\"Jason-skd\"}",
+        .body = "{\"login\":\"octocat\"}",
     }};
     var fake = FakeTransport{ .responses = &responses, .expect_secret = true };
-    var client = try Client.init(.{
-        .allocator = allocator,
-        .io = std.testing.io,
-        .token = "SECRET",
-        .transport = .{ .context = &fake, .execute_fn = FakeTransport.execute },
-    });
+    var client = try Client.initWithTransport(
+        allocator,
+        std.Io.failing,
+        .{ .context = &fake, .send_fn = FakeTransport.send },
+        .{
+            .token = "SECRET",
+            .user_agent = test_user_agent,
+        },
+    );
     defer client.deinit();
 
     var result = try client.rest(Payload, "/user");
     defer result.deinit();
     switch (result) {
-        .success => |parsed| try std.testing.expectEqualStrings("Jason-skd", parsed.value.login),
+        .success => |parsed| try std.testing.expectEqualStrings("octocat", parsed.value.login),
         .failure => return error.UnexpectedFailure,
     }
 }
@@ -115,15 +108,15 @@ test "REST success sends authenticated GitHub headers and typed JSON" {
     };
     const responses = [_]FakeResponse{.{
         .status = .ok,
-        .body = "{\"login\":\"Jason-skd\",\"bio\":null,\"new_field\":true}",
+        .body = "{\"login\":\"octocat\",\"bio\":null,\"new_field\":true}",
     }};
     var fake = FakeTransport{ .responses = &responses, .expect_secret = true };
-    var client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .token = "SECRET",
-        .transport = .{ .context = &fake, .execute_fn = FakeTransport.execute },
-    });
+    var client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &fake, .send_fn = FakeTransport.send },
+        .{ .token = "SECRET", .user_agent = test_user_agent },
+    );
     defer client.deinit();
 
     var result = try client.rest(Payload, "/user");
@@ -131,14 +124,14 @@ test "REST success sends authenticated GitHub headers and typed JSON" {
     switch (result) {
         .failure => return error.UnexpectedFailure,
         .success => |parsed| {
-            try std.testing.expectEqualStrings("Jason-skd", parsed.value.login);
+            try std.testing.expectEqualStrings("octocat", parsed.value.login);
             try std.testing.expectEqual(@as(?[]const u8, null), parsed.value.bio);
         },
     }
     try std.testing.expectEqual(@as(usize, 1), fake.calls);
 }
 
-test "retry configuration controls attempts and injected waits" {
+test "retry configuration controls total attempts" {
     const responses = [_]FakeResponse{
         .{ .status = .internal_server_error, .body = "temporary" },
         .{ .status = .internal_server_error, .body = "temporary" },
@@ -146,22 +139,20 @@ test "retry configuration controls attempts and injected waits" {
     };
     const Payload = struct { ok: bool };
     var fake = FakeTransport{ .responses = &responses };
-    var waits = WaitLog{};
-    var client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .retry = .{ .max_attempts = 3, .initial_backoff = .fromMilliseconds(5) },
-        .transport = .{ .context = &fake, .execute_fn = FakeTransport.execute },
-        .waiter = .{ .context = &waits, .wait_fn = WaitLog.wait },
-    });
+    var client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &fake, .send_fn = FakeTransport.send },
+        .{
+            .user_agent = test_user_agent,
+            .retry = .{ .max_attempts = 3, .initial_backoff = .fromMilliseconds(5) },
+        },
+    );
     defer client.deinit();
 
     var result = try client.rest(Payload, "/user");
     defer result.deinit();
     try std.testing.expectEqual(@as(usize, 3), fake.calls);
-    try std.testing.expectEqual(@as(usize, 2), waits.len);
-    try std.testing.expectEqual(std.Io.Duration.fromMilliseconds(5), waits.durations[0]);
-    try std.testing.expectEqual(std.Io.Duration.fromMilliseconds(10), waits.durations[1]);
     try std.testing.expect(result == .success);
 }
 
@@ -175,12 +166,12 @@ test "authentication and exhausted rate limit failures remain distinguishable" {
     const Payload = struct { ok: bool };
     const unauthorized_responses = [_]FakeResponse{.{ .status = .unauthorized, .body = "SECRET" }};
     var unauthorized_fake = FakeTransport{ .responses = &unauthorized_responses, .expect_secret = true };
-    var unauthorized_client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .token = "SECRET",
-        .transport = .{ .context = &unauthorized_fake, .execute_fn = FakeTransport.execute },
-    });
+    var unauthorized_client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &unauthorized_fake, .send_fn = FakeTransport.send },
+        .{ .token = "SECRET", .user_agent = test_user_agent },
+    );
     defer unauthorized_client.deinit();
 
     var unauthorized = try unauthorized_client.rest(Payload, "/user");
@@ -201,15 +192,16 @@ test "authentication and exhausted rate limit failures remain distinguishable" {
         },
     }};
     var retry_fake = FakeTransport{ .responses = &retry_responses, .expect_secret = true };
-    var waits = WaitLog{};
-    var retry_client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .token = "SECRET",
-        .retry = .{ .max_attempts = 2, .initial_backoff = .zero },
-        .transport = .{ .context = &retry_fake, .execute_fn = FakeTransport.execute },
-        .waiter = .{ .context = &waits, .wait_fn = WaitLog.wait },
-    });
+    var retry_client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &retry_fake, .send_fn = FakeTransport.send },
+        .{
+            .token = "SECRET",
+            .user_agent = test_user_agent,
+            .retry = .{ .max_attempts = 2, .initial_backoff = .zero },
+        },
+    );
     defer retry_client.deinit();
 
     var rate_limited = try retry_client.rest(Payload, "/user");
@@ -221,7 +213,6 @@ test "authentication and exhausted rate limit failures remain distinguishable" {
     try std.testing.expectEqualStrings("core", rate_limited.failure.rate_limit.resource.slice().?);
     try std.testing.expect(std.mem.indexOf(u8, rate_limited.failure.diagnostic(), "SECRET") == null);
     try std.testing.expectEqual(@as(usize, 2), retry_fake.calls);
-    try std.testing.expectEqual(@as(usize, 1), waits.len);
 }
 
 test "GraphQL serializes variables and surfaces errors before invalid partial data" {
@@ -231,15 +222,15 @@ test "GraphQL serializes variables and surfaces errors before invalid partial da
         .body = "{\"data\":{\"viewer\":{\"login\":42}},\"errors\":[{\"message\":\"token SECRET rejected\"}]}",
     }};
     var fake = FakeTransport{ .responses = &responses, .expect_login_variable = true };
-    var client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .token = "SECRET",
-        .transport = .{ .context = &fake, .execute_fn = graphqlFakeExecute },
-    });
+    var client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &fake, .send_fn = graphqlFakeSend },
+        .{ .token = "SECRET", .user_agent = test_user_agent },
+    );
     defer client.deinit();
 
-    var result = try client.graphql(Payload, "query Viewer { viewer { login } }", .{ .login = "Jason-skd" });
+    var result = try client.graphql(Payload, "query Viewer { viewer { login } }", .{ .login = "octocat" });
     defer result.deinit();
     try std.testing.expectEqual(FailureKind.graphql, result.failure.kind);
     try std.testing.expect(std.mem.indexOf(u8, result.failure.diagnostic(), "SECRET") == null);
@@ -249,12 +240,12 @@ test "GraphQL serializes variables and surfaces errors before invalid partial da
 test "transport JSON retryable rate-limit and terminal failures retain separate identities" {
     const Payload = struct { ok: bool };
     var unused_context: u8 = 0;
-    var transport_client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .retry = .{ .max_attempts = 1 },
-        .transport = .{ .context = &unused_context, .execute_fn = failingExecute },
-    });
+    var transport_client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &unused_context, .send_fn = failingSend },
+        .{ .user_agent = test_user_agent, .retry = .{ .max_attempts = 1 } },
+    );
     defer transport_client.deinit();
     var transport_result = try transport_client.rest(Payload, "/user");
     defer transport_result.deinit();
@@ -280,12 +271,12 @@ test "transport JSON retryable rate-limit and terminal failures retain separate 
     for (cases) |case| {
         const responses = [_]FakeResponse{case.response};
         var fake = FakeTransport{ .responses = &responses };
-        var client = try Client.init(.{
-            .allocator = std.testing.allocator,
-            .io = std.testing.io,
-            .retry = .{ .max_attempts = 1 },
-            .transport = .{ .context = &fake, .execute_fn = FakeTransport.execute },
-        });
+        var client = try Client.initWithTransport(
+            std.testing.allocator,
+            std.Io.failing,
+            .{ .context = &fake, .send_fn = FakeTransport.send },
+            .{ .user_agent = test_user_agent, .retry = .{ .max_attempts = 1 } },
+        );
         defer client.deinit();
 
         var result = try client.rest(Payload, "/user");
@@ -297,13 +288,16 @@ test "transport JSON retryable rate-limit and terminal failures retain separate 
 test "transport failures redact tokens and credential query parameters" {
     const Payload = struct { ok: bool };
     var unused_context: u8 = 0;
-    var client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .token = "TOKEN_SECRET",
-        .retry = .{ .max_attempts = 1 },
-        .transport = .{ .context = &unused_context, .execute_fn = failingExecute },
-    });
+    var client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &unused_context, .send_fn = failingSend },
+        .{
+            .token = "TOKEN_SECRET",
+            .user_agent = test_user_agent,
+            .retry = .{ .max_attempts = 1 },
+        },
+    );
     defer client.deinit();
 
     var result = try client.rest(
@@ -324,13 +318,16 @@ test "HTTP diagnostics redact a token across the former body summary boundary" {
     defer std.testing.allocator.free(body);
     const responses = [_]FakeResponse{.{ .status = .unauthorized, .body = body }};
     var fake = FakeTransport{ .responses = &responses, .expect_secret = true };
-    var client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .token = "SECRET",
-        .retry = .{ .max_attempts = 1 },
-        .transport = .{ .context = &fake, .execute_fn = FakeTransport.execute },
-    });
+    var client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &fake, .send_fn = FakeTransport.send },
+        .{
+            .token = "SECRET",
+            .user_agent = test_user_agent,
+            .retry = .{ .max_attempts = 1 },
+        },
+    );
     defer client.deinit();
 
     var result = try client.rest(Payload, "/user");
@@ -343,20 +340,21 @@ test "GraphQL success returns typed data with owned strings" {
     const Payload = struct { viewer: struct { login: []const u8 } };
     const responses = [_]FakeResponse{.{
         .status = .ok,
-        .body = "{\"data\":{\"viewer\":{\"login\":\"Jason-skd\"}}}",
+        .body = "{\"data\":{\"viewer\":{\"login\":\"octocat\"}}}",
     }};
     var fake = FakeTransport{ .responses = &responses };
-    var client = try Client.init(.{
-        .allocator = std.testing.allocator,
-        .io = std.testing.io,
-        .transport = .{ .context = &fake, .execute_fn = graphqlFakeExecute },
-    });
+    var client = try Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &fake, .send_fn = graphqlFakeSend },
+        .{ .user_agent = test_user_agent },
+    );
     defer client.deinit();
 
     var result = try client.graphql(Payload, "query Viewer { viewer { login } }", .{});
     defer result.deinit();
     switch (result) {
-        .success => |parsed| try std.testing.expectEqualStrings("Jason-skd", parsed.value.viewer.login),
+        .success => |parsed| try std.testing.expectEqualStrings("octocat", parsed.value.viewer.login),
         .failure => return error.UnexpectedFailure,
     }
 }
@@ -373,11 +371,12 @@ test "GraphQL errors-only and missing data remain distinguishable" {
     for (cases) |case| {
         const responses = [_]FakeResponse{.{ .status = .ok, .body = case.body }};
         var fake = FakeTransport{ .responses = &responses };
-        var client = try Client.init(.{
-            .allocator = std.testing.allocator,
-            .io = std.testing.io,
-            .transport = .{ .context = &fake, .execute_fn = graphqlFakeExecute },
-        });
+        var client = try Client.initWithTransport(
+            std.testing.allocator,
+            std.Io.failing,
+            .{ .context = &fake, .send_fn = graphqlFakeSend },
+            .{ .user_agent = test_user_agent },
+        );
         defer client.deinit();
 
         var result = try client.graphql(Payload, "query Viewer { viewer { login } }", .{});
@@ -389,22 +388,20 @@ test "GraphQL errors-only and missing data remain distinguishable" {
 test "invalid retry configuration headers and foreign REST hosts are rejected" {
     try std.testing.expectError(
         error.InvalidRetryConfig,
-        Client.init(.{
-            .allocator = std.testing.allocator,
-            .io = std.testing.io,
+        Client.init(std.testing.allocator, std.Io.failing, .{
+            .user_agent = test_user_agent,
             .retry = .{ .max_attempts = 0 },
         }),
     );
     try std.testing.expectError(
         error.InvalidHeaderValue,
-        Client.init(.{
-            .allocator = std.testing.allocator,
-            .io = std.testing.io,
+        Client.init(std.testing.allocator, std.Io.failing, .{
             .token = "SECRET\r\nInjected: true",
+            .user_agent = test_user_agent,
         }),
     );
 
-    var client = try Client.init(.{ .allocator = std.testing.allocator, .io = std.testing.io });
+    var client = try Client.init(std.testing.allocator, std.Io.failing, .{ .user_agent = test_user_agent });
     defer client.deinit();
     try std.testing.expectError(error.InvalidUrl, client.rest(struct {}, "https://example.com/private"));
 }

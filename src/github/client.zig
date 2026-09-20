@@ -11,8 +11,6 @@ const transport = @import("transport.zig");
 pub const graphql_url = "https://api.github.com/graphql";
 /// Base URL used to resolve relative REST paths.
 pub const rest_base_url = "https://api.github.com";
-/// Default product identifier sent in the HTTP User-Agent header.
-pub const default_user_agent = "Jason-skd-profile-gen";
 /// GitHub REST API version requested by this client.
 pub const api_version = "2022-11-28";
 
@@ -20,7 +18,7 @@ pub const api_version = "2022-11-28";
 pub const Header = transport.Header;
 /// A complete request passed to an injected transport.
 pub const Request = transport.Request;
-/// Type-erased request executor used by deterministic tests.
+/// Type-erased request sender used by deterministic tests.
 pub const Transport = transport.Transport;
 /// An owned transport response used by custom transports.
 pub const RawResponse = transport.RawResponse;
@@ -36,18 +34,14 @@ pub const Result = failures.Result;
 /// Retry policy whose attempt count includes the initial request.
 pub const RetryConfig = retry.Config;
 
-/// Type-erased wait operation used to make retry tests deterministic.
-pub const Waiter = retry.Waiter;
-
-/// Dependencies and policy used to initialize a GitHub client.
+/// Caller-provided values that determine GitHub request behavior.
 pub const Config = struct {
-    allocator: std.mem.Allocator,
-    io: std.Io,
+    /// GitHub credential copied by `Client.init`, or null for anonymous requests.
     token: ?[]const u8 = null,
-    user_agent: []const u8 = default_user_agent,
+    /// Product identifier copied into every HTTP User-Agent header.
+    user_agent: []const u8,
+    /// Bounded retry policy applied to transport and retryable HTTP failures.
     retry: RetryConfig = .{},
-    transport: ?Transport = null,
-    waiter: ?Waiter = null,
 };
 
 /// Typed GitHub REST and GraphQL client with owned transport resources.
@@ -55,15 +49,58 @@ pub const Client = struct {
     allocator: std.mem.Allocator,
     io: std.Io,
     token: ?[]u8,
-    bearer: ?[]u8,
+    authorization: ?[]u8,
     user_agent: []u8,
     retry: RetryConfig,
-    injected_transport: ?Transport,
-    waiter: ?Waiter,
-    standard_transport: transport.Std,
+    backend: Backend,
 
-    /// Initializes the client and copies credential and User-Agent data.
-    pub fn init(config: Config) !Client {
+    const Backend = union(enum) {
+        standard: transport.Std,
+        injected: Transport,
+
+        fn deinit(self: *Backend) void {
+            switch (self.*) {
+                .standard => |*standard| standard.deinit(),
+                .injected => {},
+            }
+            self.* = undefined;
+        }
+
+        fn send(self: *Backend, allocator: std.mem.Allocator, request: Request) !RawResponse {
+            return switch (self.*) {
+                .standard => |*standard| standard.send(request),
+                .injected => |injected| injected.send(allocator, request),
+            };
+        }
+    };
+
+    /// Initializes a client backed by `std.http.Client`.
+    ///
+    /// The allocator and I/O implementation must remain usable until `deinit`.
+    /// Credential and User-Agent bytes are copied during this call.
+    pub fn init(allocator: std.mem.Allocator, io: std.Io, config: Config) !Client {
+        return initInner(allocator, io, null, config);
+    }
+
+    /// Initializes a client with a caller-provided request transport.
+    ///
+    /// The transport context, allocator, and I/O implementation must outlive
+    /// the client. Credential and User-Agent bytes are copied during this call.
+    pub fn initWithTransport(
+        allocator: std.mem.Allocator,
+        io: std.Io,
+        injected_transport: Transport,
+        config: Config,
+    ) !Client {
+        return initInner(allocator, io, injected_transport, config);
+    }
+
+    fn initInner(
+        allocator: std.mem.Allocator,
+        io: std.Io,
+        injected_transport: ?Transport,
+        config: Config,
+    ) !Client {
         if (config.retry.max_attempts == 0 or config.retry.initial_backoff.nanoseconds < 0) {
             return error.InvalidRetryConfig;
         }
@@ -73,36 +110,37 @@ pub const Client = struct {
             return error.InvalidHeaderValue;
         }
 
-        const token = if (config.token) |value| try config.allocator.dupe(u8, value) else null;
-        errdefer if (token) |value| config.allocator.free(value);
+        const token = if (config.token) |value| try allocator.dupe(u8, value) else null;
+        errdefer if (token) |value| freeSecret(allocator, value);
 
-        const bearer = if (token) |value|
-            try std.fmt.allocPrint(config.allocator, "Bearer {s}", .{value})
+        const authorization = if (token) |value|
+            try std.fmt.allocPrint(allocator, "Bearer {s}", .{value})
         else
             null;
-        errdefer if (bearer) |value| config.allocator.free(value);
+        errdefer if (authorization) |value| freeSecret(allocator, value);
 
-        const user_agent = try config.allocator.dupe(u8, config.user_agent);
-        errdefer config.allocator.free(user_agent);
+        const user_agent = try allocator.dupe(u8, config.user_agent);
+        errdefer allocator.free(user_agent);
 
         return .{
-            .allocator = config.allocator,
-            .io = config.io,
+            .allocator = allocator,
+            .io = io,
             .token = token,
-            .bearer = bearer,
+            .authorization = authorization,
             .user_agent = user_agent,
             .retry = config.retry,
-            .injected_transport = config.transport,
-            .waiter = config.waiter,
-            .standard_transport = .init(config.allocator, config.io),
+            .backend = if (injected_transport) |injected|
+                .{ .injected = injected }
+            else
+                .{ .standard = .init(allocator, io) },
         };
     }
 
-    /// Releases the standard HTTP client, credential copies, and User-Agent.
+    /// Releases the active transport, credential copies, and User-Agent.
     pub fn deinit(self: *Client) void {
-        self.standard_transport.deinit();
-        if (self.bearer) |value| self.allocator.free(value);
-        if (self.token) |value| self.allocator.free(value);
+        self.backend.deinit();
+        if (self.authorization) |value| freeSecret(self.allocator, value);
+        if (self.token) |value| freeSecret(self.allocator, value);
         self.allocator.free(self.user_agent);
         self.* = undefined;
     }
@@ -112,7 +150,7 @@ pub const Client = struct {
         const url = try self.resolveRestUrl(path_or_url);
         defer self.allocator.free(url);
 
-        const outcome = try self.perform(.GET, url, null);
+        const outcome = try self.sendWithRetry(.GET, url, null);
         return switch (outcome) {
             .failure => |failure| .{ .failure = failure },
             .response => |response_value| response_parser.parseRest(
@@ -136,7 +174,7 @@ pub const Client = struct {
         }, .{});
         defer self.allocator.free(payload);
 
-        const outcome = try self.perform(.POST, graphql_url, payload);
+        const outcome = try self.sendWithRetry(.POST, graphql_url, payload);
         return switch (outcome) {
             .failure => |failure| .{ .failure = failure },
             .response => |response_value| response_parser.parseGraphql(
@@ -165,12 +203,12 @@ pub const Client = struct {
         return self.allocator.dupe(u8, path_or_url);
     }
 
-    const RequestOutcome = union(enum) {
+    const SendOutcome = union(enum) {
         response: RawResponse,
         failure: Failure,
     };
 
-    fn perform(self: *Client, method: std.http.Method, url: []const u8, payload: ?[]const u8) !RequestOutcome {
+    fn sendWithRetry(self: *Client, method: std.http.Method, url: []const u8, payload: ?[]const u8) !SendOutcome {
         var header_buffer: [5]Header = undefined;
         const headers = self.prepareHeaders(&header_buffer, payload != null);
         const request: Request = .{
@@ -182,7 +220,7 @@ pub const Client = struct {
 
         var attempt: u8 = 0;
         while (attempt < self.retry.max_attempts) : (attempt += 1) {
-            var response = self.execute(request) catch |err| {
+            var response = self.sendOnce(request) catch |err| {
                 if (err == error.OutOfMemory) return error.OutOfMemory;
                 if (attempt + 1 == self.retry.max_attempts) {
                     return .{ .failure = .init(
@@ -226,8 +264,8 @@ pub const Client = struct {
         count += 1;
         buffer[count] = .{ .name = "User-Agent", .value = self.user_agent };
         count += 1;
-        if (self.bearer) |bearer| {
-            buffer[count] = .{ .name = "Authorization", .value = bearer };
+        if (self.authorization) |authorization| {
+            buffer[count] = .{ .name = "Authorization", .value = authorization };
             count += 1;
         }
         if (has_payload) {
@@ -237,21 +275,17 @@ pub const Client = struct {
         return buffer[0..count];
     }
 
-    fn execute(self: *Client, request: Request) !RawResponse {
-        if (self.injected_transport) |injected| {
-            return injected.execute(self.allocator, request);
-        }
-        return self.standard_transport.execute(request);
+    fn sendOnce(self: *Client, request: Request) !RawResponse {
+        return self.backend.send(self.allocator, request);
     }
 
     fn waitBeforeRetry(self: *Client, retry_index: u8) !void {
         const duration = retry.backoff(self.retry.initial_backoff, retry_index);
-        if (self.waiter) |waiter| return waiter.wait(duration);
         return self.io.sleep(duration, .awake);
     }
 };
 
-fn retryWaitFailure(token: ?[]const u8, wait_error: anyerror) Client.RequestOutcome {
+fn retryWaitFailure(token: ?[]const u8, wait_error: anyerror) Client.SendOutcome {
     return .{ .failure = .init(
         .transport,
         null,
@@ -264,4 +298,10 @@ fn retryWaitFailure(token: ?[]const u8, wait_error: anyerror) Client.RequestOutc
 
 fn containsNewline(value: []const u8) bool {
     return std.mem.findAny(u8, value, "\r\n") != null;
+}
+
+fn freeSecret(allocator: std.mem.Allocator, value: []u8) void {
+    if (value.len == 0) return;
+    std.crypto.secureZero(u8, value);
+    allocator.free(value);
 }

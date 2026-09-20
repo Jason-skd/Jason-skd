@@ -18,14 +18,16 @@ pub const Request = struct {
     headers: []const Header,
 };
 
-/// Type-erased request executor used to replace real networking in tests.
+/// Type-erased request sender used to replace real networking in tests.
 pub const Transport = struct {
+    /// Borrowed implementation state that must outlive every `send` call.
     context: *anyopaque,
-    execute_fn: *const fn (*anyopaque, std.mem.Allocator, Request) anyerror!RawResponse,
+    /// Implementation called by `send` after restoring the erased context.
+    send_fn: *const fn (*anyopaque, std.mem.Allocator, Request) anyerror!RawResponse,
 
-    /// Executes one request and returns an owned response.
-    pub fn execute(self: Transport, allocator: std.mem.Allocator, request: Request) !RawResponse {
-        return self.execute_fn(self.context, allocator, request);
+    /// Sends one request and returns an owned response.
+    pub fn send(self: Transport, allocator: std.mem.Allocator, request: Request) !RawResponse {
+        return self.send_fn(self.context, allocator, request);
     }
 };
 
@@ -146,8 +148,8 @@ pub const Std = struct {
         self.* = undefined;
     }
 
-    /// Executes one request without automatically following redirects.
-    pub fn execute(self: *Std, request: Request) !RawResponse {
+    /// Sends one request without automatically following redirects.
+    pub fn send(self: *Std, request: Request) !RawResponse {
         const uri = try std.Uri.parse(request.url);
         var extra_headers: [5]std.http.Header = undefined;
         var privileged_headers: [5]std.http.Header = undefined;

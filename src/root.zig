@@ -7,7 +7,7 @@ pub const config = @import("config.zig");
 pub const cli = @import("cli.zig");
 
 /// GitHub API integration used by the profile generator.
-pub const github = @import("github/root.zig");
+pub const github = @import("github.zig");
 
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {

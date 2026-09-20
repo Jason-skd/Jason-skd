@@ -7,19 +7,10 @@ const transport = @import("transport.zig");
 
 /// Bounded retry policy whose attempt count includes the initial request.
 pub const Config = struct {
+    /// Total request attempts, including the initial request.
     max_attempts: u8 = 3,
+    /// Delay before the first retry; each later delay doubles.
     initial_backoff: std.Io.Duration = .fromSeconds(1),
-};
-
-/// Type-erased wait operation used to make retry tests deterministic.
-pub const Waiter = struct {
-    context: *anyopaque,
-    wait_fn: *const fn (*anyopaque, std.Io.Duration) anyerror!void,
-
-    /// Waits for one retry delay using the injected implementation.
-    pub fn wait(self: Waiter, duration: std.Io.Duration) !void {
-        return self.wait_fn(self.context, duration);
-    }
 };
 
 /// Computes the saturated exponential delay for a zero-based retry index.
@@ -44,6 +35,13 @@ pub fn classify(status: std.http.Status, rate_limit: transport.RateLimit) ?failu
     }
     if (code >= 500) return .retryable_http;
     return .terminal_http;
+}
+
+test "backoff doubles from the configured initial duration" {
+    const initial = std.Io.Duration.fromMilliseconds(5);
+    try std.testing.expectEqual(initial, backoff(initial, 0));
+    try std.testing.expectEqual(std.Io.Duration.fromMilliseconds(10), backoff(initial, 1));
+    try std.testing.expectEqual(std.Io.Duration.fromMilliseconds(20), backoff(initial, 2));
 }
 
 test "rate limit classification covers 429 and exhausted 403 responses" {

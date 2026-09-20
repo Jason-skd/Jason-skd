@@ -1,3 +1,5 @@
+//! Removes credentials from bounded error diagnostics before truncation.
+
 const std = @import("std");
 
 /// Writes text after replacing common credential forms with placeholders.

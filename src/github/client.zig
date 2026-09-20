@@ -1,3 +1,5 @@
+//! Owns GitHub client configuration and orchestrates REST and GraphQL requests.
+
 const std = @import("std");
 
 const failures = @import("failure.zig");
@@ -31,7 +33,7 @@ pub const Failure = failures.Failure;
 /// Either an owned typed value or a structured GitHub failure.
 pub const Result = failures.Result;
 
-/// Configures bounded exponential retry behavior.
+/// Retry policy whose attempt count includes the initial request.
 pub const RetryConfig = retry.Config;
 
 /// Type-erased wait operation used to make retry tests deterministic.
@@ -124,6 +126,9 @@ pub const Client = struct {
     }
 
     /// Performs a GraphQL POST and parses the response `data` member into `T`.
+    ///
+    /// Retryable failures may resend the POST, so callers must use this helper
+    /// only for operations that are safe to execute more than once.
     pub fn graphql(self: *Client, comptime T: type, query: []const u8, variables: anytype) !Result(T) {
         const payload = try std.json.Stringify.valueAlloc(self.allocator, .{
             .query = query,

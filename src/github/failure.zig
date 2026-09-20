@@ -1,3 +1,5 @@
+//! Defines structured failures and owned success-or-failure results.
+
 const std = @import("std");
 
 const redact = @import("redact.zig");

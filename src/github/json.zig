@@ -1,3 +1,5 @@
+//! Centralizes typed JSON parsing and response ownership policy.
+
 const std = @import("std");
 
 /// Parses typed JSON into owned memory while tolerating unknown fields.

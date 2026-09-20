@@ -1,3 +1,5 @@
+//! Deterministic GitHub client tests backed by injected transport and waiting.
+
 const std = @import("std");
 
 const github = @import("client.zig");
@@ -81,6 +83,29 @@ fn graphqlFakeExecute(context: *anyopaque, allocator: std.mem.Allocator, request
 
 fn failingExecute(_: *anyopaque, _: std.mem.Allocator, _: Request) anyerror!RawResponse {
     return error.ConnectionResetByPeer;
+}
+
+fn restAllocationFailure(allocator: std.mem.Allocator) !void {
+    const Payload = struct { login: []const u8 };
+    const responses = [_]FakeResponse{.{
+        .status = .ok,
+        .body = "{\"login\":\"Jason-skd\"}",
+    }};
+    var fake = FakeTransport{ .responses = &responses, .expect_secret = true };
+    var client = try Client.init(.{
+        .allocator = allocator,
+        .io = std.testing.io,
+        .token = "SECRET",
+        .transport = .{ .context = &fake, .execute_fn = FakeTransport.execute },
+    });
+    defer client.deinit();
+
+    var result = try client.rest(Payload, "/user");
+    defer result.deinit();
+    switch (result) {
+        .success => |parsed| try std.testing.expectEqualStrings("Jason-skd", parsed.value.login),
+        .failure => return error.UnexpectedFailure,
+    }
 }
 
 test "REST success sends authenticated GitHub headers and typed JSON" {
@@ -382,4 +407,8 @@ test "invalid retry configuration headers and foreign REST hosts are rejected" {
     var client = try Client.init(.{ .allocator = std.testing.allocator, .io = std.testing.io });
     defer client.deinit();
     try std.testing.expectError(error.InvalidUrl, client.rest(struct {}, "https://example.com/private"));
+}
+
+test "REST ownership chain cleans up every allocation failure path" {
+    try std.testing.checkAllAllocationFailures(std.testing.allocator, restAllocationFailure, .{});
 }

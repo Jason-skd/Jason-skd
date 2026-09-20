@@ -1,3 +1,5 @@
+//! Converts owned HTTP bodies into typed REST or GraphQL results.
+
 const std = @import("std");
 
 const failures = @import("failure.zig");

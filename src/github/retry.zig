@@ -1,9 +1,11 @@
+//! Defines bounded retry policy, exponential backoff, and status classification.
+
 const std = @import("std");
 
 const failures = @import("failure.zig");
 const transport = @import("transport.zig");
 
-/// Configures bounded exponential retry behavior.
+/// Bounded retry policy whose attempt count includes the initial request.
 pub const Config = struct {
     max_attempts: u8 = 3,
     initial_backoff: std.Io.Duration = .fromSeconds(1),

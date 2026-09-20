@@ -106,6 +106,27 @@ test {
 
 验证基线为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。本仓库通过释放原 response buffer 后继续读取 typed 字符串、离线 transport 状态分类及 `zig build test` 验证这些结论；工具链 API 或 response 生命周期变化时必须重新核对。
 
+### GitHub 客户端源码审查索引
+
+以下是 Issue #15 实现与 rebase 复审实际读取的当前 Zig 工具链源码及形成的判断，供后续 HTTP 客户端工作直接定位；它们仍以对应 revision 为适用边界：
+
+- `../zig/doc/langref.html.in` 的 `Comments`、`Style Guide` 和 `Doc Comment Guidance`：`//!` 描述文件 namespace，`///` 描述紧随其后的声明；类型和返回类型的 callable 使用 `TitleCase`，普通函数使用 `camelCase`，其他值使用 `snake_case`；命名应避免 FQN 重复，文档应补充所有权和不变量而不是复述名字。本项目因此从内部 `github/client.zig` 直接向 `github` facade re-export 类型，公开路径使用 `github.Client` 而不是 `github.client.Client`。
+- `../zig/lib/std/http.zig` 的 `Method.requestHasBody`、`Method.responseHasBody`、`Method.idempotent`、`Status` 和 `Status.class`：GET 是幂等操作，POST 默认不是；对 GraphQL POST 自动重试必须由更窄的领域契约保证操作可重复执行，不能仅因它承载 query 文本就推断幂等。
+- `../zig/lib/std/http/Client.zig` 的 `RequestOptions`、`request`、`Request.RedirectBehavior`、`Request.receiveHead`、`Request.deinit` 和 `Response.Head.iterateHeaders`：request 必须 `deinit`；`.unhandled` 把 3xx 返回调用方；`extra_headers` 会跨域保留，而 `privileged_headers` 会在跨域 redirect 时移除，所以 Authorization 应放入后者，即使当前客户端禁止自动 redirect。
+- `../zig/lib/std/http/test.zig` 的客户端请求、response body、header iterator、trailer 和 redirect 用例：官方模式是在 request 创建后立即 `defer req.deinit()`，读取 head 后通过 response reader 消费或分配 body，并由拥有该 allocation 的 allocator 释放。
+- `../zig/lib/std/json.zig` 的 facade 和测试聚合：公共 namespace 可以通过 alias 暴露底层类型与函数，并在根测试块显式导入实现测试；对外模块应使用文件级 `//!` 说明整体职责。
+- `../zig/lib/std/json/static.zig` 的 `ParseOptions`、`Parsed`、`parseFromSlice` 和 `parseFromTokenSource`：`Parsed(T)` 拥有 arena，调用方必须 `deinit`；构造时以两层 `errdefer` 分别保护 arena 对象与内部 block；slice 输入默认可能借用 buffer。
+- `../zig/lib/std/json/static_test.zig` 的 typed struct、unknown field 和 duplicate field 用例，以及 `../zig/lib/std/json/Scanner.zig` 的 `AllocWhen` 文档：未知字段可显式忽略，重复字段默认报错；需要让字符串越过输入 buffer 生命周期时使用 `.alloc_always`。
+- `../zig/lib/std/json/Stringify.zig` 的 `valueAlloc` 和对应测试：返回的 JSON slice 由传入 allocator 拥有，错误集为 `OutOfMemory`，调用方在请求结束后负责释放。
+- `../zig/lib/std/Io/Writer.zig` 的 `fixed`、buffered write 和 fixed-buffer 测试：固定 writer 容量耗尽时保留已经写入的前缀并返回 `WriteFailed`；错误诊断必须先逐段脱敏再写入固定 buffer，不能先截断原文后脱敏。
+- `../zig/lib/std/testing.zig` 的 `checkAllAllocationFailures`：它先测量成功路径的 allocation 数，再逐个注入 OOM，并检查泄漏、吞掉的 OOM 和不确定的 allocation 次数；适合验证拥有多个 allocation 和 `errdefer` 的公开构造/解析链。
+- `../zig/lib/std/Uri.zig` 的 `parse`、`parseAfterScheme`、`Component` 和 userinfo 测试：解析结果借用原始 URL；host、user 和 password 是分离的 component。只接受 GitHub API 绝对 URL 时应比较 scheme/host 并拒绝任何 user/password，不能靠字符串前缀判断来源。
+- `../zig/lib/std/mem.zig` 的 `startsWith`、`findScalarPos`、`findAnyPos` 和 `findLast`：这些 API 返回原 slice 中的索引且找不到时返回 `null`。完整 URL 脱敏需要用最后一个 `@` 划分 userinfo，并在完整输入上定位 query/authority 边界后再写入 bounded diagnostic。
+- `../zig/lib/std/fmt.zig` 的 `parseUnsigned` 及测试：它只接受无符号表示，并区分 `InvalidCharacter` 与 `Overflow`。GitHub rate-limit header 不是主响应 payload，解析失败时保留为缺失 metadata，而不把整个 API 响应改判为失败。
+- `../zig/lib/std/math.zig` 的 `mul` 与 `../zig/lib/std/Io.zig` 的 `Duration`、`sleep`：`mul` 以 `error.Overflow` 报告溢出；`Duration` 以 `i96` 纳秒存储。指数退避使用 checked multiplication 并饱和到 `Duration.max`，初始化时拒绝负 duration，测试通过注入 waiter 避免真实睡眠。
+
+本仓库据此使用文件级模块文档、typed facade、Authorization privileged header、GraphQL 重试契约、完整响应所有权和 allocation-failure 穷举测试。验证覆盖离线 REST/GraphQL、错误分类、secret redaction、typed JSON 生命周期和完整项目测试图；Zig revision、HTTP redirect 实现、JSON arena 模型或 Writer fixed-buffer 行为变化时必须重新审查这些结论。
+
 ## 远端依赖与包身份
 
 适用范围：`build.zig.zon` 中的远端依赖。

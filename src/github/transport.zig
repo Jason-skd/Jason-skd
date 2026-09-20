@@ -1,3 +1,5 @@
+//! Adapts GitHub request descriptions to the Zig standard HTTP client.
+
 const std = @import("std");
 
 const max_response_bytes = 8 * 1024 * 1024;
@@ -147,10 +149,9 @@ pub const Std = struct {
     /// Executes one request without automatically following redirects.
     pub fn execute(self: *Std, request: Request) !RawResponse {
         const uri = try std.Uri.parse(request.url);
-        var std_headers: [5]std.http.Header = undefined;
-        for (request.headers, 0..) |header, index| {
-            std_headers[index] = .{ .name = header.name, .value = header.value };
-        }
+        var extra_headers: [5]std.http.Header = undefined;
+        var privileged_headers: [5]std.http.Header = undefined;
+        const header_counts = partitionHeaders(request.headers, &extra_headers, &privileged_headers);
 
         var req = try self.client.request(request.method, uri, .{
             .redirect_behavior = .unhandled,
@@ -160,7 +161,8 @@ pub const Std = struct {
                 .accept_encoding = .omit,
                 .content_type = .omit,
             },
-            .extra_headers = std_headers[0..request.headers.len],
+            .extra_headers = extra_headers[0..header_counts.extra],
+            .privileged_headers = privileged_headers[0..header_counts.privileged],
         });
         defer req.deinit();
 
@@ -187,3 +189,41 @@ pub const Std = struct {
         return .fromOwned(self.allocator, response.head.status, rate_limit, body);
     }
 };
+
+const HeaderCounts = struct {
+    extra: usize = 0,
+    privileged: usize = 0,
+};
+
+fn partitionHeaders(
+    headers: []const Header,
+    extra: *[5]std.http.Header,
+    privileged: *[5]std.http.Header,
+) HeaderCounts {
+    var counts: HeaderCounts = .{};
+    for (headers) |header| {
+        const std_header: std.http.Header = .{ .name = header.name, .value = header.value };
+        if (std.ascii.eqlIgnoreCase(header.name, "authorization")) {
+            privileged[counts.privileged] = std_header;
+            counts.privileged += 1;
+        } else {
+            extra[counts.extra] = std_header;
+            counts.extra += 1;
+        }
+    }
+    return counts;
+}
+
+test "authorization is separated from redirect-safe headers" {
+    var extra: [5]std.http.Header = undefined;
+    var privileged: [5]std.http.Header = undefined;
+    const counts = partitionHeaders(&.{
+        .{ .name = "Accept", .value = "application/json" },
+        .{ .name = "Authorization", .value = "Bearer SECRET" },
+    }, &extra, &privileged);
+
+    try std.testing.expectEqual(@as(usize, 1), counts.extra);
+    try std.testing.expectEqualStrings("Accept", extra[0].name);
+    try std.testing.expectEqual(@as(usize, 1), counts.privileged);
+    try std.testing.expectEqualStrings("Authorization", privileged[0].name);
+}

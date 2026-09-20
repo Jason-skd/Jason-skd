@@ -15,4 +15,5 @@ test {
     _ = config;
     _ = cli;
     _ = @import("dependency_validation.zig");
+    _ = @import("process.zig");
 }

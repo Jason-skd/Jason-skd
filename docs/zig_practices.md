@@ -56,7 +56,38 @@ test {
 }
 ```
 
-这是当前标准库用于聚合子模块测试的常见形式，可在 `std/json.zig`、`std/fs.zig`、`std/Random.zig` 和 `std/Io/Threaded.zig` 等文件中找到。新增模块的测试应由最近的模块根纳入，而不是依靠未被引用的文件自动发现。
+这是当前标准库用于聚合子模块测试的常见形式，可在 `std/json.zig`、`std/fs.zig`、`std/Random.zig` 和 `std/Io/Threaded.zig` 等文件中找到。新增模块的测试应由最近的模块根纳入，而不是依靠未被引用的文件自动发现；若实现与测试拆在不同文件，由实现模块的匿名测试块导入自己的测试文件，上层根只导入实现模块，避免上层知道下层测试布局。
+
+## 有界子进程与敏感缓冲区
+
+适用范围：需要捕获输出、继承或覆盖环境并可能处理凭据的内部子进程 adapter。
+
+- `std.process.run` 使用 argv 直接启动进程，把 stdin 设为 `ignore`，通过 `Io.File.MultiReader` 同时读取 stdout 和 stderr，并以 `defer child.kill(io)` 覆盖 timeout、取消、输出超限和读取失败后的终止与等待。`ignore` 会把流接到 POSIX `/dev/null` 或 Windows `NUL`，不同于可能令子进程遇到 `EBADF` 的 `close`；`Child.kill` 在 `wait` 后幂等且不可取消，因此同一条 defer 同时适合正常和异常清理。正常返回的 `Child.Term` 保留非零退出、signal、stopped 和 unknown；调用方不应把这些结构化结束状态折叠为 spawn 错误。
+- `process.run` 的读取循环会把同一个 `RunOptions.timeout` 传给每次 `MultiReader.fill`。`Io.Timeout.duration` 在每次等待时都表示一段新的相对时长，因此要求整条命令共享总时限时，应在进入 `process.run` 前调用 `timeout.toDeadline(io)` 一次，将其固定为 absolute deadline。`error.Timeout` 和 `error.Canceled` 保持在 `process.RunError` 中，不转换为退出状态。
+- `Io.Future.cancel` 请求任务在下一个可取消 I/O 点收到 `error.Canceled`，并等待任务返回其原始结果类型；它不是跳过函数清理的强制线程终止。取消测试应先等待子任务报告“已经启动”，再调用 `cancel` 并断言 `error.Canceled`，避免用固定时长猜测竞态是否发生。
+- `process.Environ.Map` 独立拥有每个键和值。`put` 和 `putMove` 会断言键合法，覆盖值和 `deinit` 都会直接释放内存；敏感环境 adapter 应先用 `validateKeyForPut` 和 NUL 检查返回普通错误，再复制数据。覆盖前清零旧值，失败路径与最终销毁前清零全部值，避免把调用方 map 的所有权或可变性带入子进程层。
+- `Uri.parse` 返回借用输入的 component；对解析成功且带 userinfo 的 HTTP(S) URL，可用 `Uri.writeToStream` 并关闭 `Format.Flags.authentication` 重新格式化。authority 明确含 `@` 但解析失败的候选 URL 应整体替换，避免 malformed credential 逃逸。之后再按长度降序替换非空显式 secret，防止较短前缀先替换而保留较长 secret 的尾部。
+- `crypto.secureZero` 通过 volatile slice 防止清零被优化掉。当前 `Allocator.free` 会先把 slice 写成 `undefined`，再调用 allocator vtable 的 `free`；因此 `secureZero(bytes); gpa.free(bytes)` 不能保证清零是释放前的最后一次写入。对已知由同一 allocator 以自然对齐 `[]u8` 分配的非空 slice，应在清零后以原对齐直接调用 `rawFree`；更通用的做法是使用 allocator wrapper，让 wrapper 的 vtable `free` 在转交 backing allocator 的 `rawFree` 前清零。
+- `process.run` 的错误路径会在内部释放尚未返回的输出和环境 block；需要保证这些内存也清零时，可为这次调用提供局部 allocator wrapper，并让 `resize`、`remap` 返回失败以迫使增长走 allocate-copy-secure-free。wrapper 只能在它分配的全部内存于当前调用内释放时使用，不能让返回 allocation 超过 wrapper context 的生命周期。
+- 敏感 `Writer.Allocating` 不能依赖自动增长，因为 `ensureTotalCapacityPrecise` 可能复制后直接 `rawFree` 旧 allocation；应一次性保守预分配，最终复制出拥有型结果，再清零整个中间 capacity 后调用其同样使用 `rawFree` 的 `deinit`。每次 secret 替换产生的新旧 owned slice 也应在交接所有权时清零旧 slice。
+- `testing.checkAllAllocationFailures` 会先统计成功路径的 allocation 数量，再逐个注入 OOM，并检查错误是否被吞掉、allocation 数量是否不确定以及字节是否全部释放。它适合验证确定性分配流程的所有权，但不会证明释放前内容已经清零；安全清零仍需使用可观察 backing storage 的独立测试。
+
+关键源码：
+
+- `../zig/lib/std/process.zig`：`RunError`、`RunOptions`、`RunResult`、`run`
+- `../zig/lib/std/process/Child.zig`：`Term`、`Term.success`、`kill`、`wait`
+- `../zig/lib/std/Io.zig`：`Timeout.toDeadline`、`Future.cancel`、`concurrent`
+- `../zig/lib/std/Io/File/MultiReader.zig`：`fill`、`deinit`、`toOwnedSlice`
+- `../zig/lib/std/process/Environ.zig`：`Map.validateKeyForPut`、`putMove`、`clone`、`deinit`
+- `../zig/lib/std/Uri.zig`：`parse`、`writeToStream`、`Format.Flags.authentication`
+- `../zig/lib/std/crypto.zig`：`secureZero`
+- `../zig/lib/std/mem/Allocator.zig`：`VTable`、`free`、`rawAlloc`、`rawRemap`、`rawFree`
+- `../zig/lib/std/testing/FailingAllocator.zig`：allocator wrapper 的 vtable 实现模式
+- `../zig/lib/std/testing.zig`：`checkAllAllocationFailures`
+- `../zig/lib/std/Io/Writer.zig`：`Allocating.ensureTotalCapacityPrecise`、`deinit`、`toOwnedSlice`
+- `../zig/lib/std/Random.zig`、`fs.zig`、`json.zig`：实现模块聚合独立测试文件
+
+验证基于 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。项目测试用真实子进程覆盖双流捕获、cwd、环境覆盖、stdin EOF、非零与 signal 结束、独立输出上限、总 timeout 和 future cancellation；脱敏测试覆盖重叠或重复 secret、空 secret、credential URL、多个 `@`、引号边界、malformed URL 和逐 allocation 失败清理，并分别观察 allocator wrapper 与直接 `rawFree` 路径的释放前清零。若 `process.run` 不再使用循环 fill、环境 map 或 `Allocator.free` 改变释放语义、URI formatter 改变 authentication 行为，或 allocating writer 获得可注入的安全释放策略，必须重新核对本节。
 
 ## 远端依赖与包身份
 

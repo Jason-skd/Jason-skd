@@ -96,10 +96,21 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 - ymlz parser 和 raw result 可以放在临时 `ArenaAllocator` 中。这样 `loadReader` 任意错误都由 arena 统一清理，不需要在没有完整 result 时调用 `Ymlz.deinit`；校验后的公开结果再复制到独立 arena。
 - 对外 parsed result 采用 `std.json.Parsed` 的所有权模式：结构体持有 `*ArenaAllocator` 和 typed value，`deinit` 先保存 child allocator，再释放 arena 并销毁 arena 对象。成功结果不得借用输入；失败诊断若借用 offending text，API 文档必须声明其生命周期。
 
+## 解析器适配器与返回值所有权
+
+这些结论来自当前 Zig revision 的标准库和锁定的 ymlz 源码，可复用于其他 typed text/config parser：
+
+- ymlz 的 `Ymlz(Destination)` 是按目标 struct 生成的 parser 类型；`init(allocator)` 创建 parser 实例，`loadRaw` 只是构造内置 `RawReader` 后转调 `loadReader`，而 `loadReader` 要求传入对象提供 `readLine(allocator) !?[]const u8`。因此文件、内存和预检后的文本可以共享同一 typed binding，而不必让 ymlz 负责输入来源。
+- ymlz 的 parser 实例同时记录自己分配的字符串/列表；官方测试在成功解析后调用 `ymlz.deinit(result)`。若调用方把 parser 和 raw result 都放进临时 arena，则错误路径可由 arena 统一回收；只有把结果复制到独立拥有的 arena 后，才能让临时 parser 生命周期结束。
+- `std.json.parseFromTokenSource` 是当前 Zig 对 arena-owned 返回值的直接模板：先由父 allocator 分配 `ArenaAllocator` 对象，再用 `errdefer` 覆盖对象分配和 arena 初始化失败，最后把解析结果放进 arena；成功时返回 `Parsed(T)`，由调用方显式 `deinit`。
+- `ArenaAllocator.init(child_allocator)` 中的 child allocator 是 arena 释放内部 block 时使用的父 allocator。`arena.deinit()` 只释放 arena 管理的 block；如果 `ArenaAllocator` 结构体本身也由父 allocator 分配，必须另行用保存下来的 child allocator `destroy` 它。
+- Zig 语言参考定义 `defer` 为离开作用域时无条件执行，`errdefer` 仅在从该作用域错误退出时执行。临时输入/parser 使用 `defer`；只有成功返回后转移给调用方的资源，才使用 `errdefer` 保护构造失败路径。
+
 关键源码：
 
 - `zig-pkg/ymlz-0.7.1-TG82aTbZAABsQ7DIERSAObNJNviwTHhtzM_KO-L3Xgo_/src/root.zig`：`Ymlz`、`loadReader`、`parse`、`parseField`、`parseBooleanExpression`、`parseNumericExpression`、`deinit`
 - `../../zig/lib/std/heap/ArenaAllocator.zig`：`init`、`allocator`、`deinit`
 - `../../zig/lib/std/json/static.zig`：`Parsed`、`parseFromTokenSource`
+- `../../zig/doc/langref.html.in`：`defer` 与 `errdefer` 语义
 
 验证方式：配置单元、公开 API 集成和生产配置 E2E artifacts 全部通过；`std.testing.checkAllAllocationFailures` 穷举验证 parse 成功路径的分配失败清理。若升级 ymlz 或 Zig revision，必须重新检查上述解析和 arena 所有权实现，尤其是 optional struct/numeric 与错误清理行为。

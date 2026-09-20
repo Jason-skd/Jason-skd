@@ -1,3 +1,5 @@
+//! Behavioral and allocation-failure tests for the process adapter.
+
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -360,6 +362,18 @@ test "secure allocator clears memory before freeing" {
     const bytes = try allocator.alloc(u8, 16);
     @memset(bytes, 0xbb);
     allocator.free(bytes);
+
+    try testing.expectEqualSlices(u8, &@as([16]u8, @splat(0)), storage[0..16]);
+}
+
+test "secureFree leaves zeroing as the final write before raw free" {
+    var storage: [64]u8 = @splat(0xaa);
+    var fixed = std.heap.FixedBufferAllocator.init(&storage);
+    const allocator = fixed.allocator();
+
+    const bytes = try allocator.alloc(u8, 16);
+    @memset(bytes, 0xbb);
+    security.secureFree(allocator, bytes);
 
     try testing.expectEqualSlices(u8, &@as([16]u8, @splat(0)), storage[0..16]);
 }

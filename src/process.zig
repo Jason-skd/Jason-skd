@@ -1,3 +1,5 @@
+//! Secret-safe, bounded child-process execution.
+
 const std = @import("std");
 
 const environment = @import("process/environment.zig");
@@ -107,4 +109,8 @@ pub fn run(
         .stdout = stdout,
         .stderr = stderr,
     };
+}
+
+test {
+    _ = @import("process/tests.zig");
 }

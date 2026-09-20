@@ -1,3 +1,5 @@
+//! Allocator helpers that make zeroing the final write before deallocation.
+
 const std = @import("std");
 
 const Allocator = std.mem.Allocator;
@@ -68,8 +70,12 @@ pub const SecureAllocator = struct {
     }
 };
 
-/// Clears an owned mutable byte slice and then frees it with `gpa`.
+/// Clears and directly releases a naturally aligned byte allocation from `gpa`.
+///
+/// `bytes` must have been allocated from `gpa` as `[]u8`. Calling `rawFree`
+/// directly keeps the secure zeroing as the final write before deallocation.
 pub fn secureFree(gpa: Allocator, bytes: []u8) void {
+    if (bytes.len == 0) return;
     std.crypto.secureZero(u8, bytes);
-    gpa.free(bytes);
+    gpa.rawFree(bytes, .of(u8), @returnAddress());
 }

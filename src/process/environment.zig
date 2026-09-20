@@ -1,3 +1,5 @@
+//! Private child-environment construction and secure cleanup.
+
 const std = @import("std");
 
 const Allocator = std.mem.Allocator;

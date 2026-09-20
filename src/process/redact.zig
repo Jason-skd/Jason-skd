@@ -1,3 +1,5 @@
+//! Credential and explicit-secret redaction for captured process output.
+
 const std = @import("std");
 
 const Allocator = std.mem.Allocator;

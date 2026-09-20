@@ -92,8 +92,9 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 
 - `clap.args.SliceIterator` 不分配或复制参数，只逐项返回调用方 argv 中的切片。`clap.parsers.string` 也直接返回收到的切片。
 - `clap.parseEx` 的结果仍由调用方负责调用 `deinit`；该清理只释放解析器为重复参数和位置参数集合分配的容器。对于 `.one` 字符串参数，清理解析结果后，值仍借用原 argv，调用方必须保证 argv 覆盖应用输入的使用期。
+- zig-clap 使用参数的最长名称原样生成结果字段，不会把连字符归一化为下划线。`--config` 可通过 `result.args.config` 访问；`--dry-run` 则必须使用 `@field(result.args, "dry-run")` 或 `result.args.@"dry-run"`。改变长参数名称也会改变生成的字段 API。
 - `std.process.Environ.Map.get` 返回 map 自有值的借用。该值在对应键被删除、map 调整或 map 销毁后失效。启动代码创建 `Init.environ_map`，并在 `main` 返回后统一销毁，因此应用入口可以在本次调用期间借用 token，但不得将它保留到 `Init` 生命周期之外。
-- 凭据优先级和空值语义应在环境映射边界完成，不为只读应用输入复制 secret，也不得把 secret 传给参数帮助或诊断接口。
+- `clap.Diagnostic.report` 只格式化解析器记录的参数名称或原始位置参数，不提供通用脱敏。凭据优先级和空值语义应在环境映射边界完成，不为只读应用输入复制 secret，也不得把 secret 放入 argv 或传给参数帮助、诊断接口。
 
 关键源码：
 
@@ -101,6 +102,7 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 - `../../zig/lib/std/start.zig`：`callMain` 对 `environ_map` 的创建、传入和清理
 - zig-clap `clap/args.zig`：`SliceIterator`
 - zig-clap `clap/parsers.zig`：`string`
-- zig-clap `clap.zig`：`parseEx`、`ResultEx.deinit`、`Diagnostic.report`、`help`
+- zig-clap `clap/streaming.zig`：`Clap.err`、`Clap.normal`
+- zig-clap `clap.zig`：`parseEx`、`ResultEx.deinit`、`Arguments`、`Diagnostic.report`、`help`
 
 验证基线：Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`、zig-clap revision `05faf3905e8548f5cc269a8836e154065e70128d`。本仓库 CLI 单测在解析函数返回后检查 argv 与环境值的指针身份，并覆盖帮助、诊断、凭据优先级和空值回退。工具链或 zig-clap revision 改变时必须重新核对这些所有权结论。

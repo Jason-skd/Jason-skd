@@ -94,6 +94,7 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 - `clap.parseEx` 的结果仍由调用方负责调用 `deinit`；该清理只释放解析器为重复参数和位置参数集合分配的容器。对于 `.one` 字符串参数，清理解析结果后，值仍借用原 argv，调用方必须保证 argv 覆盖应用输入的使用期。
 - zig-clap 使用参数的最长名称原样生成结果字段，不会把连字符归一化为下划线。`--config` 可通过 `result.args.config` 访问；`--dry-run` 则必须使用 `@field(result.args, "dry-run")` 或 `result.args.@"dry-run"`。改变长参数名称也会改变生成的字段 API。
 - `std.process.Environ.Map.get` 返回 map 自有值的借用。该值在对应键被删除、map 调整或 map 销毁后失效。启动代码创建 `Init.environ_map`，并在 `main` 返回后统一销毁，因此应用入口可以在本次调用期间借用 token，但不得将它保留到 `Init` 生命周期之外。
+- zig-clap 只在 `Clap.err` 错误路径写入 `Diagnostic`。包装 API 若接收调用方可复用的 diagnostic 输出参数，应在入口先重置为默认值，避免后续成功调用或其他错误路径保留上一次解析失败的上下文。
 - `clap.Diagnostic.report` 只格式化解析器记录的参数名称或原始位置参数，不提供通用脱敏。凭据优先级和空值语义应在环境映射边界完成，不为只读应用输入复制 secret，也不得把 secret 放入 argv 或传给参数帮助、诊断接口。
 
 关键源码：

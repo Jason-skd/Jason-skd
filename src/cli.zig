@@ -1,3 +1,6 @@
+//! Parses command-line options and environment credentials into borrowed
+//! application input, and provides writer-based help and diagnostics.
+
 const std = @import("std");
 
 const clap = @import("clap");
@@ -52,6 +55,8 @@ pub fn parse(
     environ_map: *const std.process.Environ.Map,
     diagnostic: *Diagnostic,
 ) !Command {
+    diagnostic.* = .{};
+
     var iterator: clap.args.SliceIterator = .{ .args = argv };
     var result = try clap.parseEx(
         clap.Help,
@@ -247,6 +252,28 @@ test "parse reports unknown options positionals and missing values" {
         try writeDiagnostic(diagnostic, &writer, case.expected_error);
         try std.testing.expectEqualStrings(case.expected_diagnostic, writer.buffered());
     }
+}
+
+test "parse resets a reused diagnostic before success" {
+    var environ_map: std.process.Environ.Map = .init(std.testing.allocator);
+    defer environ_map.deinit();
+
+    var diagnostic: Diagnostic = .{};
+    try std.testing.expectError(error.InvalidArgument, parse(
+        std.testing.allocator,
+        &.{"--unknown"},
+        &environ_map,
+        &diagnostic,
+    ));
+    try std.testing.expect(!std.meta.eql(Diagnostic{}, diagnostic));
+
+    _ = try parse(
+        std.testing.allocator,
+        &.{},
+        &environ_map,
+        &diagnostic,
+    );
+    try std.testing.expectEqualDeep(Diagnostic{}, diagnostic);
 }
 
 test "token resolution uses non-empty PROFILE_PAT before GITHUB_TOKEN" {

@@ -1,3 +1,5 @@
+//! Typed profile configuration parsing, validation, and owned results.
+
 const diagnostic_module = @import("config/diagnostic.zig");
 const model = @import("config/model.zig");
 const parser = @import("config/parser.zig");

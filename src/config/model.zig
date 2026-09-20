@@ -1,5 +1,6 @@
 const std = @import("std");
 
+/// A renderable profile section in its configured display order.
 pub const Section = enum {
     banner,
     typing,
@@ -9,9 +10,11 @@ pub const Section = enum {
     recent_project,
 };
 
+/// A supported profile timezone.
 pub const Timezone = enum {
     asia_shanghai,
 
+    /// Returns the canonical IANA timezone name used in YAML.
     pub fn name(self: Timezone) []const u8 {
         return switch (self) {
             .asia_shanghai => "Asia/Shanghai",
@@ -19,21 +22,25 @@ pub const Timezone = enum {
     }
 };
 
+/// Normalized six-digit lowercase theme colors without `#` prefixes.
 pub const ThemeConfig = struct {
     base: []const u8,
     accent: []const u8,
     cyan: []const u8,
 };
 
+/// Optional organization identity used by organization-aware sections.
 pub const OrgConfig = struct {
     login: ?[]const u8,
     repos: ?[]const []const u8,
 };
 
+/// Statistics section presentation.
 pub const StatsConfig = struct {
     header: []const u8,
 };
 
+/// Typing section content and presentation.
 pub const TypingConfig = struct {
     lines: ?[]const []const u8,
     font: []const u8,
@@ -45,6 +52,7 @@ pub const TypingConfig = struct {
     background: ?[]const u8,
 };
 
+/// Banner section content and presentation.
 pub const BannerConfig = struct {
     height: u32,
     instance: ?[]const u8,
@@ -56,6 +64,7 @@ pub const BannerConfig = struct {
     desc_align: ?u32,
 };
 
+/// Language section filtering and presentation.
 pub const LanguagesConfig = struct {
     header: []const u8,
     top: u32,
@@ -63,12 +72,14 @@ pub const LanguagesConfig = struct {
     types: ?[]const []const u8,
 };
 
+/// Organization card behavior and presentation.
 pub const OrgCardConfig = struct {
     enabled: bool,
     header: []const u8,
     logo_height: u32,
 };
 
+/// Recent-project card behavior and presentation.
 pub const RecentProjectConfig = struct {
     enabled: bool,
     header: []const u8,
@@ -76,6 +87,7 @@ pub const RecentProjectConfig = struct {
     exclude_external: bool,
 };
 
+/// Validated profile configuration with all generic defaults applied.
 pub const Config = struct {
     login: []const u8,
     timezone: Timezone,
@@ -93,6 +105,8 @@ pub const Config = struct {
     recent_project: RecentProjectConfig,
 };
 
+/// Owns `value` and every string and slice reachable from it.
+/// Call `deinit` exactly once when the configuration is no longer needed.
 pub const ParsedConfig = struct {
     arena: *std.heap.ArenaAllocator,
     value: Config,

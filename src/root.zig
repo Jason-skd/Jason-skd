@@ -3,6 +3,7 @@ const std = @import("std");
 pub const config = @import("config.zig");
 pub const cli = @import("cli.zig");
 pub const github = @import("github.zig");
+pub const git_activity = @import("git_activity.zig");
 
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {
@@ -15,4 +16,5 @@ test {
     _ = @import("dependency_validation.zig");
     _ = @import("process.zig");
     _ = github;
+    _ = git_activity;
 }

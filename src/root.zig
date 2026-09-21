@@ -1,10 +1,8 @@
 const std = @import("std");
 
-/// Profile YAML parsing, validation, and normalized configuration types.
 pub const config = @import("config.zig");
-
-/// CLI parsing, diagnostics, and credential resolution.
 pub const cli = @import("cli.zig");
+pub const github = @import("github.zig");
 
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {
@@ -16,4 +14,5 @@ test {
     _ = cli;
     _ = @import("dependency_validation.zig");
     _ = @import("process.zig");
+    _ = github;
 }

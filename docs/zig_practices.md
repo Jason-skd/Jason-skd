@@ -89,6 +89,65 @@ test {
 
 验证基于 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。项目测试用真实子进程覆盖双流捕获、cwd、环境覆盖、stdin EOF、非零与 signal 结束、独立输出上限、总 timeout 和 future cancellation；脱敏测试覆盖重叠或重复 secret、空 secret、credential URL、多个 `@`、引号边界、malformed URL 和逐 allocation 失败清理，并分别观察 allocator wrapper 与直接 `rawFree` 路径的释放前清零。若 `process.run` 不再使用循环 fill、环境 map 或 `Allocator.free` 改变释放语义、URI formatter 改变 authentication 行为，或 allocating writer 获得可注入的安全释放策略，必须重新核对本节。
 
+## HTTP 响应与 typed JSON 所有权
+
+适用范围：读取完整 HTTP response body 后，通过 `std.json` 绑定含字符串或切片字段的 Zig struct。
+
+- `std.json.parseFromSlice` 默认使用 `.alloc_if_needed`，解析结果可能直接引用输入 slice。若 response body 会在 helper 返回前释放，必须设置 `.allocate = .alloc_always`，并让调用方最终调用 `std.json.Parsed(T).deinit()`。
+- GitHub API 响应使用 `.ignore_unknown_fields = true` 保持向前兼容；不要改变默认的重复字段报错，也不要为必需字段提供默认值。API 可返回 `null` 的字段必须显式使用 optional 类型。
+- `std.http.Client.Request.RedirectBehavior.unhandled` 表示把 3xx response 交给调用方，且不会自动向新地址重发请求。携带 Authorization 且不需要跳转的 API client 应使用该模式，以便保留状态分类并避免凭据跨地址转发；`.not_allowed` 会在收到跳转时返回 `error.TooManyHttpRedirects`。
+
+关键源码：
+
+- `../zig/lib/std/json/static.zig`：`ParseOptions.allocate`、`parseFromSlice`、`Parsed(T).deinit`
+- `../zig/lib/std/json/static_test.zig`：typed struct、optional、未知字段和重复字段测试
+- `../zig/lib/std/http/Client.zig`：`Request.RedirectBehavior`、`Request.receiveHead`、`Request.redirect`、`Request.deinit`
+- `../zig/lib/std/http/test.zig`：request/response body 和 header 读取测试
+
+验证基线为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。本仓库通过释放原 response buffer 后继续读取 typed 字符串、离线 transport 状态分类及 `zig build test` 验证这些结论；工具链 API 或 response 生命周期变化时必须重新核对。
+
+### GitHub 客户端源码审查索引
+
+以下是 Issue #15 实现与 rebase 复审实际读取的当前 Zig 工具链源码及形成的判断，供后续 HTTP 客户端工作直接定位；它们仍以对应 revision 为适用边界：
+
+- `../zig/doc/langref.html.in` 的 `Comments`、`Style Guide` 和 `Doc Comment Guidance`：`//!` 描述文件 namespace，`///` 描述紧随其后的声明；类型和返回类型的 callable 使用 `TitleCase`，普通函数使用 `camelCase`，其他值使用 `snake_case`；命名应避免 FQN 重复，文档应补充所有权和不变量而不是复述名字。本项目因此从内部 `github/client.zig` 直接向 `github` facade re-export 类型，公开路径使用 `github.Client` 而不是 `github.client.Client`。
+- `../zig/lib/std/http.zig` 的 `Method.requestHasBody`、`Method.responseHasBody`、`Method.idempotent`、`Status` 和 `Status.class`：GET 是幂等操作，POST 默认不是；对 GraphQL POST 自动重试必须由更窄的领域契约保证操作可重复执行，不能仅因它承载 query 文本就推断幂等。
+- `../zig/lib/std/http/Client.zig` 的 `RequestOptions`、`request`、`Request.sendBodiless`、`Request.sendBody`、`Request.receiveHead`、`Request.RedirectBehavior`、`Request.deinit` 和 `Response.Head.iterateHeaders`：request 必须 `deinit`；`.unhandled` 把 3xx 返回调用方；`extra_headers` 会跨域保留，而 `privileged_headers` 会在跨域 redirect 时移除，所以 Authorization 应放入后者，即使当前客户端禁止自动 redirect。标准库用不同动词区分创建请求、发送 body 和接收响应；本项目相应使用 `sendWithRetry` 与 `sendOnce` 区分策略编排和单次 transport 调用。
+- `../zig/lib/std/http/test.zig` 的客户端请求、response body、header iterator、trailer 和 redirect 用例：官方模式是在 request 创建后立即 `defer req.deinit()`，读取 head 后通过 response reader 消费或分配 body，并由拥有该 allocation 的 allocator 释放。
+- `../zig/lib/std/json.zig` 与 `../zig/lib/std/http.zig` 的 facade 和测试聚合：公共 namespace 可以通过 alias 暴露同名子目录中的类型与函数，并在根测试块显式导入实现测试；对外模块应使用文件级 `//!` 说明整体职责。项目内多文件模块采用 `name.zig + name/`，因此入口是 `github.zig`，而不是额外的 `github/root.zig`。
+- `../zig/lib/std/json/static.zig` 的 `ParseOptions`、`Parsed`、`parseFromSlice` 和 `parseFromTokenSource`：`Parsed(T)` 拥有 arena，调用方必须 `deinit`；构造时以两层 `errdefer` 分别保护 arena 对象与内部 block；slice 输入默认可能借用 buffer。
+- `../zig/lib/std/json/static_test.zig` 的 typed struct、unknown field 和 duplicate field 用例，以及 `../zig/lib/std/json/Scanner.zig` 的 `AllocWhen` 文档：未知字段可显式忽略，重复字段默认报错；需要让字符串越过输入 buffer 生命周期时使用 `.alloc_always`。
+- `../zig/lib/std/json/Stringify.zig` 的 `valueAlloc` 和对应测试：返回的 JSON slice 由传入 allocator 拥有，错误集为 `OutOfMemory`，调用方在请求结束后负责释放。
+- `../zig/lib/std/Io/Writer.zig` 的 `fixed`、buffered write 和 fixed-buffer 测试：固定 writer 容量耗尽时保留已经写入的前缀并返回 `WriteFailed`；错误诊断必须先逐段脱敏再写入固定 buffer，不能先截断原文后脱敏。
+- `../zig/lib/std/testing.zig` 的 `checkAllAllocationFailures`：它先测量成功路径的 allocation 数，再逐个注入 OOM，并检查泄漏、吞掉的 OOM 和不确定的 allocation 次数；适合验证拥有多个 allocation 和 `errdefer` 的公开构造/解析链。
+- `../zig/lib/std/Uri.zig` 的 `parse`、`parseAfterScheme`、`Component` 和 userinfo 测试：解析结果借用原始 URL；host、user 和 password 是分离的 component。只接受 GitHub API 绝对 URL 时应比较 scheme/host 并拒绝任何 user/password，不能靠字符串前缀判断来源。
+- `../zig/lib/std/mem.zig` 的 `startsWith`、`findScalarPos`、`findAnyPos` 和 `findLast`：这些 API 返回原 slice 中的索引且找不到时返回 `null`。完整 URL 脱敏需要用最后一个 `@` 划分 userinfo，并在完整输入上定位 query/authority 边界后再写入 bounded diagnostic。
+- `../zig/lib/std/fmt.zig` 的 `parseUnsigned` 及测试：它只接受无符号表示，并区分 `InvalidCharacter` 与 `Overflow`。GitHub rate-limit header 不是主响应 payload，解析失败时保留为缺失 metadata，而不把整个 API 响应改判为失败。
+- `../zig/lib/std/math.zig` 的 `mul` 与 `../zig/lib/std/Io.zig` 的 `Duration`、`sleep`：`mul` 以 `error.Overflow` 报告溢出；`Duration` 以 `i96` 纳秒存储。指数退避使用 checked multiplication 并饱和到 `Duration.max`，初始化时拒绝负 duration，离线测试通过注入 `std.Io.failing` 避免真实睡眠。
+
+本仓库据此使用文件级模块文档、typed facade、Authorization privileged header、GraphQL 重试契约、完整响应所有权和 allocation-failure 穷举测试。验证覆盖离线 REST/GraphQL、错误分类、secret redaction、typed JSON 生命周期和完整项目测试图；Zig revision、HTTP redirect 实现、JSON arena 模型或 Writer fixed-buffer 行为变化时必须重新审查这些结论。
+
+## 初始化参数与运行时依赖
+
+适用范围：同时接收调用方策略、allocator、I/O 和可替换 adapter 的内部组件初始化 API。
+
+- 当前标准库并没有要求所有初始化参数必须放进一个 options struct。`std.testing.FailingAllocator.init(internal_allocator, config)`、`std.zig.Directories.init(arena, io, options)`、`Compilation.create(gpa, arena, io, diag, options)` 和 TLS `Client.init(input, output, options)` 都把主要能力作为显式位置参数，把策略值集中在最后的 config/options 中。
+- 本仓库据此采用 `Client.init(allocator, io, config)`。需要替换 HTTP transport 时使用 `initWithTransport(allocator, io, transport, config)`；重试等待直接使用已经注入的 `std.Io.sleep`，不再额外定义重复的 waiter 接口。这是项目的职责建模，不是 Zig 语言规则；当能力的所有权或调用方变化时应重新检查边界。
+- User-Agent 表示发起请求的产品身份，不能由通用 GitHub client 猜测个人或部署身份。因此 `Config.user_agent` 是必填值，由装配层显式提供；客户端不保存个性化默认值。
+
+关键源码：
+
+- `../zig/lib/std/zig.zig`：`Directories.InitOptions`、`Directories.init`
+- `../zig/src/main.zig`：`std.zig.Directories.init` 调用点
+- `../zig/lib/std/testing/FailingAllocator.zig`：`Config`、`init`
+- `../zig/src/Compilation.zig`：`CreateOptions`、`create`
+- `../zig/lib/std/crypto/tls/Client.zig`：`Options`、`init`
+- `../zig/lib/std/Io.zig`：`VTable.sleep`、`sleep`、`failing`
+- `../zig/lib/compiler/resinator/compile.zig`：`CompileOptions`、`compile`
+- `../zig/lib/compiler/resinator/main.zig`：`compile` 调用点
+
+验证基线仍为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。通过 GitHub client 的显式初始化调用、注入 transport 与 `std.Io.failing` 测试、allocation-failure 测试和完整项目构建验证；若上述初始化 API 或本项目装配边界变化，需要重新审查。
+
 ## 远端依赖与包身份
 
 适用范围：`build.zig.zon` 中的远端依赖。

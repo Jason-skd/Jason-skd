@@ -10,7 +10,6 @@ const Allocator = std.mem.Allocator;
 const Environ = std.process.Environ;
 const Io = std.Io;
 
-/// A borrowed environment-variable assignment applied only to the child process.
 pub const EnvironmentOverride = environment.Override;
 
 /// Borrowed inputs and resource limits for one child-process execution.

@@ -4,6 +4,14 @@ const std = @import("std");
 const github = @import("profile_generator").github;
 const github_workflow = @import("profile_generator").github_workflow;
 
+test "client and workflow remain separate public modules" {
+    try std.testing.expect(!@hasDecl(github, "Profile"));
+    try std.testing.expect(!@hasDecl(github, "fetchProfile"));
+    try std.testing.expect(!@hasDecl(github_workflow, "Client"));
+    try std.testing.expect(@hasDecl(github_workflow, "Profile"));
+    try std.testing.expect(@hasDecl(github_workflow, "fetchProfile"));
+}
+
 const FixtureTransport = struct {
     bodies: []const []const u8,
     calls: usize = 0,

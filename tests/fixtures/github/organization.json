@@ -1,0 +1,7 @@
+{
+  "login": "sample-org",
+  "name": "Sample Organization",
+  "avatar_url": "https://example.test/sample-org/avatar",
+  "html_url": "https://example.test/sample-org",
+  "unrelated_field": "ignored"
+}

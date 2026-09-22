@@ -16,6 +16,18 @@ const FixtureTransport = struct {
     }
 };
 
+const RestFixtureTransport = struct {
+    body: []const u8,
+    expected_path: []const u8,
+
+    fn send(context: *anyopaque, allocator: std.mem.Allocator, request: github.Request) anyerror!github.RawResponse {
+        const self: *@This() = @ptrCast(@alignCast(context));
+        try std.testing.expectEqual(std.http.Method.GET, request.method);
+        try std.testing.expect(std.mem.endsWith(u8, request.url, self.expected_path));
+        return github.RawResponse.init(allocator, .ok, &.{}, self.body);
+    }
+};
+
 fn initClient(transport: *FixtureTransport) !github.Client {
     return github.Client.initWithTransport(
         std.testing.allocator,
@@ -73,5 +85,47 @@ test "public API returns public-only facts after identity fallback" {
             try std.testing.expect(!owned.value.owned_repositories[0].is_private);
             try std.testing.expectEqual(@as(usize, 2), transport.calls);
         },
+    }
+}
+
+test "public API returns organization and repository REST facts" {
+    var organization_transport = RestFixtureTransport{
+        .body = @embedFile("fixtures/github/organization.json"),
+        .expected_path = "/orgs/sample-org",
+    };
+    var organization_client = try github.Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &organization_transport, .send_fn = RestFixtureTransport.send },
+        .{ .user_agent = "github-data-integration", .retry = .{ .max_attempts = 1 } },
+    );
+    defer organization_client.deinit();
+    var organization = try github.fetchOrganization(&organization_client, std.testing.allocator, "sample-org");
+    defer organization.deinit();
+    switch (organization) {
+        .failure => return error.UnexpectedFailure,
+        .success => |owned| try std.testing.expectEqualStrings("Sample Organization", owned.value.display_name.?),
+    }
+
+    var repository_transport = RestFixtureTransport{
+        .body = @embedFile("fixtures/github/repository.json"),
+        .expected_path = "/repos/sample-org/sample-project",
+    };
+    var repository_client = try github.Client.initWithTransport(
+        std.testing.allocator,
+        std.Io.failing,
+        .{ .context = &repository_transport, .send_fn = RestFixtureTransport.send },
+        .{ .user_agent = "github-data-integration", .retry = .{ .max_attempts = 1 } },
+    );
+    defer repository_client.deinit();
+    var repository = try github.fetchRepositoryMetadata(
+        &repository_client,
+        std.testing.allocator,
+        "sample-org/sample-project",
+    );
+    defer repository.deinit();
+    switch (repository) {
+        .failure => return error.UnexpectedFailure,
+        .success => |owned| try std.testing.expectEqualStrings("Zig", owned.value.primary_language.?),
     }
 }

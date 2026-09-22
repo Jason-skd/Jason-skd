@@ -3,6 +3,7 @@
 const client = @import("github/client.zig");
 const model = @import("github/model.zig");
 const profile = @import("github/profile.zig");
+const rest_data = @import("github/rest_data.zig");
 
 pub const Client = client.Client;
 pub const Config = client.Config;
@@ -31,12 +32,15 @@ pub const ProfileResult = model.ProfileResult;
 pub const OrganizationResult = model.OrganizationResult;
 pub const RepositoryMetadataResult = model.RepositoryMetadataResult;
 pub const fetchProfile = profile.fetchProfile;
+pub const fetchOrganization = rest_data.fetchOrganization;
+pub const fetchRepositoryMetadata = rest_data.fetchRepositoryMetadata;
 
 test {
     _ = client;
     _ = @import("github/client_test.zig");
     _ = @import("github/model_test.zig");
     _ = profile;
+    _ = rest_data;
     _ = @import("github/json.zig");
     _ = @import("github/redact.zig");
     _ = @import("github/retry.zig");

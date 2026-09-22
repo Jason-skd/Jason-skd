@@ -400,9 +400,9 @@ fn validUniqueRepositories(items: []model.Repository, account_login: []const u8)
 }
 
 fn validRepositoryIdentity(name_with_owner: []const u8, owner_login: []const u8, repository_name: ?[]const u8) bool {
-    const slash = std.mem.indexOfScalar(u8, name_with_owner, '/') orelse return false;
+    const slash = std.mem.findScalar(u8, name_with_owner, '/') orelse return false;
     if (slash == 0 or slash + 1 == name_with_owner.len) return false;
-    if (std.mem.indexOfScalarPos(u8, name_with_owner, slash + 1, '/') != null) return false;
+    if (std.mem.findScalarPos(u8, name_with_owner, slash + 1, '/') != null) return false;
     if (owner_login.len == 0 or !std.ascii.eqlIgnoreCase(name_with_owner[0..slash], owner_login)) return false;
     return if (repository_name) |name| std.mem.eql(u8, name_with_owner[slash + 1 ..], name) else true;
 }

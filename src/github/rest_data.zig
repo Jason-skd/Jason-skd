@@ -25,7 +25,7 @@ const RepositoryResponse = struct {
 /// Fetches one organization identity as an independently owned domain value.
 pub fn fetchOrganization(client: *Client, allocator: Allocator, login: []const u8) Error!model.OrganizationResult {
     if (!validSegment(login)) return error.InvalidOptions;
-    const path = try std.fmt.allocPrint(allocator, "/orgs/{s}", .{login});
+    const path = try allocator.print("/orgs/{s}", .{login});
     defer allocator.free(path);
 
     var response = client.rest(OrganizationResponse, path) catch |err| return escapingClientError(err);
@@ -46,7 +46,7 @@ pub fn fetchRepositoryMetadata(
     name_with_owner: []const u8,
 ) Error!model.RepositoryMetadataResult {
     const identity = splitRepositoryIdentity(name_with_owner) orelse return error.InvalidOptions;
-    const path = try std.fmt.allocPrint(allocator, "/repos/{s}/{s}", .{ identity.owner, identity.name });
+    const path = try allocator.print("/repos/{s}/{s}", .{ identity.owner, identity.name });
     defer allocator.free(path);
 
     var response = client.rest(RepositoryResponse, path) catch |err| return escapingClientError(err);
@@ -96,8 +96,8 @@ const RepositoryIdentity = struct {
 };
 
 fn splitRepositoryIdentity(value: []const u8) ?RepositoryIdentity {
-    const slash = std.mem.indexOfScalar(u8, value, '/') orelse return null;
-    if (std.mem.indexOfScalarPos(u8, value, slash + 1, '/') != null) return null;
+    const slash = std.mem.findScalar(u8, value, '/') orelse return null;
+    if (std.mem.findScalarPos(u8, value, slash + 1, '/') != null) return null;
     const owner = value[0..slash];
     const name = value[slash + 1 ..];
     if (!validSegment(owner) or !validSegment(name)) return null;

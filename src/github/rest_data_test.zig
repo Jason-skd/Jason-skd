@@ -90,7 +90,11 @@ test "REST sources normalize not found and reject unsafe identities" {
     try std.testing.expect(missing == .failure);
     try std.testing.expect(missing.failure.cause == .not_found);
 
+    try std.testing.expectError(error.InvalidOptions, rest_data.fetchOrganization(&client, std.testing.allocator, "."));
+    try std.testing.expectError(error.InvalidOptions, rest_data.fetchOrganization(&client, std.testing.allocator, ".."));
     try std.testing.expectError(error.InvalidOptions, rest_data.fetchOrganization(&client, std.testing.allocator, "../org"));
+    try std.testing.expectError(error.InvalidOptions, rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/."));
+    try std.testing.expectError(error.InvalidOptions, rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/.."));
     try std.testing.expectError(error.InvalidOptions, rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/repo/extra"));
 }
 
@@ -108,6 +112,37 @@ test "REST sources reject response identity mismatches" {
     defer result.deinit();
     try std.testing.expect(result == .failure);
     try std.testing.expectEqual(model.InvalidResponse.invalid_repository_identity, result.failure.cause.invalid_response);
+}
+
+test "REST sources reject missing required fields and preserve GitHub failure context" {
+    var invalid_fake = FakeTransport{
+        .response = .{
+            .status = .ok,
+            .body = "{\"login\":\"sample-org\",\"name\":null,\"html_url\":\"https://example.test/org\"}",
+        },
+        .expected_path = "/orgs/sample-org",
+    };
+    var invalid_client = try initClient(&invalid_fake, std.testing.allocator);
+    defer invalid_client.deinit();
+    var invalid = try rest_data.fetchOrganization(&invalid_client, std.testing.allocator, "sample-org");
+    defer invalid.deinit();
+    try std.testing.expect(invalid == .failure);
+    try std.testing.expectEqual(model.DataOperation.organization, invalid.failure.operation);
+    try std.testing.expectEqual(client_module.FailureKind.invalid_json, invalid.failure.cause.github.kind);
+    try std.testing.expectEqualStrings("sample-org", invalid.failure.subject());
+
+    var failed_fake = FakeTransport{
+        .response = .{ .status = .internal_server_error, .body = "temporarily unavailable" },
+        .expected_path = "/repos/sample-owner/sample-repo",
+    };
+    var failed_client = try initClient(&failed_fake, std.testing.allocator);
+    defer failed_client.deinit();
+    var failed = try rest_data.fetchRepositoryMetadata(&failed_client, std.testing.allocator, "sample-owner/sample-repo");
+    defer failed.deinit();
+    try std.testing.expect(failed == .failure);
+    try std.testing.expectEqual(model.DataOperation.repository_metadata, failed.failure.operation);
+    try std.testing.expectEqual(client_module.FailureKind.retryable_http, failed.failure.cause.github.kind);
+    try std.testing.expectEqualStrings("sample-owner/sample-repo", failed.failure.subject());
 }
 
 fn organizationAllocationFailure(allocator: std.mem.Allocator) !void {

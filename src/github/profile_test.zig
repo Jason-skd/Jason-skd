@@ -18,6 +18,10 @@ const FakeTransport = struct {
     saw_start: bool = false,
     saw_end: bool = false,
     saw_limit: bool = false,
+    saw_cursor_one: bool = false,
+    saw_cursor_two: bool = false,
+    saw_leap_day: bool = false,
+    saw_maximum: bool = false,
 
     fn send(context: *anyopaque, allocator: std.mem.Allocator, request: Request) anyerror!RawResponse {
         const self: *@This() = @ptrCast(@alignCast(context));
@@ -27,6 +31,10 @@ const FakeTransport = struct {
         if (std.mem.indexOf(u8, payload, "1970-01-01T00:00:00Z") != null) self.saw_start = true;
         if (std.mem.indexOf(u8, payload, "1970-01-01T00:00:01Z") != null) self.saw_end = true;
         if (std.mem.indexOf(u8, payload, "\"maxRepositories\":2") != null) self.saw_limit = true;
+        if (std.mem.indexOf(u8, payload, "\"after\":\"cursor-1\"") != null) self.saw_cursor_one = true;
+        if (std.mem.indexOf(u8, payload, "\"after\":\"cursor-2\"") != null) self.saw_cursor_two = true;
+        if (std.mem.indexOf(u8, payload, "2000-02-29T00:00:00Z") != null) self.saw_leap_day = true;
+        if (std.mem.indexOf(u8, payload, "9999-12-31T23:59:59Z") != null) self.saw_maximum = true;
         const response = self.responses[@min(self.calls, self.responses.len - 1)];
         self.calls += 1;
         return RawResponse.init(allocator, .ok, &.{}, response.body);
@@ -84,7 +92,11 @@ const page_two_body =
     "{\"data\":{\"viewer\":{\"repositories\":{" ++
     "\"nodes\":[{\"name\":\"beta\",\"nameWithOwner\":\"target-user/beta\",\"description\":\"second\"," ++
     "\"isPrivate\":true,\"stargazerCount\":0,\"primaryLanguage\":null}]," ++
-    "\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null}}}}}";
+    "\"pageInfo\":{\"hasNextPage\":true,\"endCursor\":\"cursor-2\"}}}}}";
+
+const page_three_body =
+    "{\"data\":{\"viewer\":{\"repositories\":{" ++
+    "\"nodes\":[],\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null}}}}}";
 
 test "profile source maps facts, sorts and deduplicates contributed repositories" {
     var fake = FakeTransport{ .responses = &.{.{ .body = profile_body }} };
@@ -116,6 +128,23 @@ test "profile source maps facts, sorts and deduplicates contributed repositories
     }
 }
 
+test "profile source formats UTC DateTime boundaries" {
+    var fake = FakeTransport{ .responses = &.{.{ .body = profile_body }} };
+    var client = try initClient(&fake, "token");
+    defer client.deinit();
+
+    var result = try profile.fetchProfile(&client, std.testing.allocator, .{
+        .login = "target-user",
+        .since = 951_782_400,
+        .until = 253_402_300_799,
+        .max_contributed_repositories = 0,
+    });
+    defer result.deinit();
+    try std.testing.expect(result == .success);
+    try std.testing.expect(fake.saw_leap_day);
+    try std.testing.expect(fake.saw_maximum);
+}
+
 test "profile source falls back from viewer identity to public user" {
     var fake = FakeTransport{ .responses = &.{
         .{ .body = fallback_viewer_body },
@@ -142,6 +171,7 @@ test "profile source follows owned repository cursors" {
     var fake = FakeTransport{ .responses = &.{
         .{ .body = page_one_body },
         .{ .body = page_two_body },
+        .{ .body = page_three_body },
     } };
     var client = try initClient(&fake, "token");
     defer client.deinit();
@@ -153,13 +183,51 @@ test "profile source follows owned repository cursors" {
         .max_contributed_repositories = 0,
     });
     defer result.deinit();
-    try std.testing.expectEqual(@as(usize, 2), fake.calls);
+    try std.testing.expectEqual(@as(usize, 3), fake.calls);
+    try std.testing.expect(fake.saw_cursor_one);
+    try std.testing.expect(fake.saw_cursor_two);
     switch (result) {
         .failure => return error.UnexpectedFailure,
         .success => |owned| {
             try std.testing.expectEqual(@as(usize, 1), owned.value.owned_repositories.len);
             try std.testing.expectEqualStrings("target-user/beta", owned.value.owned_repositories[0].name_with_owner);
         },
+    }
+}
+
+test "profile source rejects inconsistent and duplicate owned repository identities" {
+    const owner_mismatch =
+        "{\"data\":{\"viewer\":{\"login\":\"target-user\",\"repositories\":{" ++
+        "\"nodes\":[{\"name\":\"alpha\",\"nameWithOwner\":\"other-user/alpha\",\"description\":null," ++
+        "\"isPrivate\":false,\"stargazerCount\":0,\"primaryLanguage\":null}]," ++
+        "\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null}}," ++ empty_contributions ++ "}}}";
+    const name_mismatch =
+        "{\"data\":{\"viewer\":{\"login\":\"target-user\",\"repositories\":{" ++
+        "\"nodes\":[{\"name\":\"beta\",\"nameWithOwner\":\"target-user/alpha\",\"description\":null," ++
+        "\"isPrivate\":false,\"stargazerCount\":0,\"primaryLanguage\":null}]," ++
+        "\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null}}," ++ empty_contributions ++ "}}}";
+    const duplicate_identity =
+        "{\"data\":{\"viewer\":{\"login\":\"target-user\",\"repositories\":{" ++
+        "\"nodes\":[{\"name\":\"alpha\",\"nameWithOwner\":\"target-user/alpha\",\"description\":null," ++
+        "\"isPrivate\":false,\"stargazerCount\":0,\"primaryLanguage\":null},{" ++
+        "\"name\":\"ALPHA\",\"nameWithOwner\":\"TARGET-USER/ALPHA\",\"description\":null," ++
+        "\"isPrivate\":false,\"stargazerCount\":0,\"primaryLanguage\":null}]," ++
+        "\"pageInfo\":{\"hasNextPage\":false,\"endCursor\":null}}," ++ empty_contributions ++ "}}}";
+
+    const bodies = [_][]const u8{ owner_mismatch, name_mismatch, duplicate_identity };
+    for (bodies) |body| {
+        var fake = FakeTransport{ .responses = &.{.{ .body = body }} };
+        var client = try initClient(&fake, "token");
+        defer client.deinit();
+        var result = try profile.fetchProfile(&client, std.testing.allocator, .{
+            .login = "target-user",
+            .since = 0,
+            .until = 0,
+            .max_contributed_repositories = 0,
+        });
+        defer result.deinit();
+        try std.testing.expect(result == .failure);
+        try std.testing.expectEqual(model.InvalidResponse.invalid_repository_identity, result.failure.cause.invalid_response);
     }
 }
 

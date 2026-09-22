@@ -105,7 +105,7 @@ fn splitRepositoryIdentity(value: []const u8) ?RepositoryIdentity {
 }
 
 fn validSegment(value: []const u8) bool {
-    if (value.len == 0) return false;
+    if (value.len == 0 or std.mem.eql(u8, value, ".") or std.mem.eql(u8, value, "..")) return false;
     for (value) |char| {
         if (!std.ascii.isAlphanumeric(char) and char != '-' and char != '_' and char != '.') return false;
     }

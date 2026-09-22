@@ -233,14 +233,15 @@ fn buildProfile(
     const arena = owned.arena.allocator();
 
     var repositories: std.ArrayList(model.Repository) = .empty;
-    if (!try appendRepositories(arena, &repositories, account.repositories.nodes)) {
+    if (!try appendRepositories(arena, &repositories, account.repositories.nodes, account.login)) {
         return finishFailure(owned, .init(.profile, .{ .invalid_response = .invalid_repository_identity }, options.login));
     }
 
     var cursors: std.ArrayList([]const u8) = .empty;
-    var page_info = account.repositories.pageInfo;
-    while (page_info.hasNextPage) {
-        const cursor = page_info.endCursor orelse
+    var has_next_page = account.repositories.pageInfo.hasNextPage;
+    var next_cursor = account.repositories.pageInfo.endCursor;
+    while (has_next_page) {
+        const cursor = next_cursor orelse
             return finishFailure(owned, .init(.profile, .{ .invalid_response = .malformed_pagination }, options.login));
         if (cursor.len == 0 or containsString(cursors.items, cursor)) {
             return finishFailure(owned, .init(.profile, .{ .invalid_response = .malformed_pagination }, options.login));
@@ -255,16 +256,21 @@ fn buildProfile(
                 defer page_result.deinit();
                 const connection = page_result.connection orelse
                     return finishFailure(owned, .init(.profile, .not_found, options.login));
-                if (!try appendRepositories(arena, &repositories, connection.nodes)) {
+                if (!try appendRepositories(arena, &repositories, connection.nodes, account.login)) {
                     return finishFailure(owned, .init(.profile, .{ .invalid_response = .invalid_repository_identity }, options.login));
                 }
-                page_info = connection.pageInfo;
+                has_next_page = connection.pageInfo.hasNextPage;
+                next_cursor = if (has_next_page) blk: {
+                    const value = connection.pageInfo.endCursor orelse
+                        return finishFailure(owned, .init(.profile, .{ .invalid_response = .malformed_pagination }, options.login));
+                    break :blk try arena.dupe(u8, value);
+                } else null;
             },
         }
     }
 
     const owned_repositories = try repositories.toOwnedSlice(arena);
-    if (!validUniqueRepositories(owned_repositories)) {
+    if (!validUniqueRepositories(owned_repositories, account.login)) {
         return finishFailure(owned, .init(.profile, .{ .invalid_response = .invalid_repository_identity }, options.login));
     }
 
@@ -327,10 +333,15 @@ fn fetchRepositoryPage(client: *Client, source: PageSource, login: []const u8, c
     };
 }
 
-fn appendRepositories(arena: Allocator, output: *std.ArrayList(model.Repository), nodes: []const RepositoryResponse) Allocator.Error!bool {
+fn appendRepositories(
+    arena: Allocator,
+    output: *std.ArrayList(model.Repository),
+    nodes: []const RepositoryResponse,
+    account_login: []const u8,
+) Allocator.Error!bool {
     try output.ensureUnusedCapacity(arena, nodes.len);
     for (nodes) |repository| {
-        if (!validRepositoryIdentity(repository.nameWithOwner, null)) return false;
+        if (!validRepositoryIdentity(repository.nameWithOwner, account_login, repository.name)) return false;
         output.appendAssumeCapacity(.{
             .name = try arena.dupe(u8, repository.name),
             .name_with_owner = try arena.dupe(u8, repository.nameWithOwner),
@@ -365,7 +376,7 @@ fn normalizeContributedRepositories(items: *[]model.ContributedRepository) bool 
 
     var write_index: usize = 0;
     for (items.*) |item| {
-        if (!validRepositoryIdentity(item.name_with_owner, item.owner_login)) return false;
+        if (!validRepositoryIdentity(item.name_with_owner, item.owner_login, null)) return false;
         if (write_index != 0 and std.ascii.eqlIgnoreCase(items.*[write_index - 1].name_with_owner, item.name_with_owner)) {
             const previous = items.*[write_index - 1];
             if (!std.ascii.eqlIgnoreCase(previous.owner_login, item.owner_login) or previous.is_private != item.is_private) return false;
@@ -378,9 +389,9 @@ fn normalizeContributedRepositories(items: *[]model.ContributedRepository) bool 
     return true;
 }
 
-fn validUniqueRepositories(items: []model.Repository) bool {
+fn validUniqueRepositories(items: []model.Repository, account_login: []const u8) bool {
     for (items, 0..) |item, index| {
-        if (!validRepositoryIdentity(item.name_with_owner, null)) return false;
+        if (!validRepositoryIdentity(item.name_with_owner, account_login, item.name)) return false;
         for (items[0..index]) |previous| {
             if (std.ascii.eqlIgnoreCase(previous.name_with_owner, item.name_with_owner)) return false;
         }
@@ -388,11 +399,12 @@ fn validUniqueRepositories(items: []model.Repository) bool {
     return true;
 }
 
-fn validRepositoryIdentity(name_with_owner: []const u8, owner_login: ?[]const u8) bool {
+fn validRepositoryIdentity(name_with_owner: []const u8, owner_login: []const u8, repository_name: ?[]const u8) bool {
     const slash = std.mem.indexOfScalar(u8, name_with_owner, '/') orelse return false;
     if (slash == 0 or slash + 1 == name_with_owner.len) return false;
     if (std.mem.indexOfScalarPos(u8, name_with_owner, slash + 1, '/') != null) return false;
-    return if (owner_login) |owner| owner.len != 0 and std.ascii.eqlIgnoreCase(name_with_owner[0..slash], owner) else true;
+    if (owner_login.len == 0 or !std.ascii.eqlIgnoreCase(name_with_owner[0..slash], owner_login)) return false;
+    return if (repository_name) |name| std.mem.eql(u8, name_with_owner[slash + 1 ..], name) else true;
 }
 
 fn contributions(response: ContributionsResponse) model.Contributions {
@@ -429,7 +441,7 @@ fn formatDateTime(timestamp: i64) error{InvalidTimestamp}![20]u8 {
     const month = day.calculateMonthDay();
     const clock = epoch_seconds.getDaySeconds();
     var buffer: [20]u8 = undefined;
-    _ = std.fmt.bufPrint(&buffer, "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}Z", .{
+    _ = std.mem.print(&buffer, "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}Z", .{
         day.year,
         month.month.numeric(),
         month.day_index + 1,

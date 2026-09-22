@@ -3,168 +3,12 @@
 const std = @import("std");
 const github = @import("../github.zig");
 const model = @import("model.zig");
+const query = @import("profile_query.zig");
 
 const Allocator = std.mem.Allocator;
 const Client = github.Client;
 
 pub const Error = Allocator.Error || error{InvalidOptions};
-
-const max_graphql_timestamp: i64 = 253_402_300_799;
-
-const viewer_query =
-    \\query ProfileViewer($from: DateTime!, $to: DateTime!, $maxRepositories: Int!, $after: String) {
-    \\  viewer {
-    \\    login
-    \\    repositories(first: 100, after: $after, ownerAffiliations: [OWNER], isFork: false, orderBy: {field: NAME, direction: ASC}) {
-    \\      nodes { name nameWithOwner description isPrivate stargazerCount primaryLanguage { name } }
-    \\      pageInfo { hasNextPage endCursor }
-    \\    }
-    \\    contributionsCollection(from: $from, to: $to) {
-    \\      totalCommitContributions
-    \\      totalIssueContributions
-    \\      totalPullRequestContributions
-    \\      totalPullRequestReviewContributions
-    \\      totalRepositoryContributions
-    \\      restrictedContributionsCount
-    \\      contributionCalendar { totalContributions weeks { contributionDays { contributionCount } } }
-    \\      commitContributionsByRepository(maxRepositories: $maxRepositories) {
-    \\        repository { nameWithOwner isPrivate owner { login } }
-    \\      }
-    \\    }
-    \\  }
-    \\}
-;
-
-const user_query =
-    \\query ProfileUser($login: String!, $from: DateTime!, $to: DateTime!, $maxRepositories: Int!, $after: String) {
-    \\  user(login: $login) {
-    \\    login
-    \\    repositories(first: 100, after: $after, ownerAffiliations: [OWNER], isFork: false, orderBy: {field: NAME, direction: ASC}) {
-    \\      nodes { name nameWithOwner description isPrivate stargazerCount primaryLanguage { name } }
-    \\      pageInfo { hasNextPage endCursor }
-    \\    }
-    \\    contributionsCollection(from: $from, to: $to) {
-    \\      totalCommitContributions
-    \\      totalIssueContributions
-    \\      totalPullRequestContributions
-    \\      totalPullRequestReviewContributions
-    \\      totalRepositoryContributions
-    \\      restrictedContributionsCount
-    \\      contributionCalendar { totalContributions weeks { contributionDays { contributionCount } } }
-    \\      commitContributionsByRepository(maxRepositories: $maxRepositories) {
-    \\        repository { nameWithOwner isPrivate owner { login } }
-    \\      }
-    \\    }
-    \\  }
-    \\}
-;
-
-const viewer_page_query =
-    \\query ProfileViewerRepositories($after: String!) {
-    \\  viewer {
-    \\    repositories(first: 100, after: $after, ownerAffiliations: [OWNER], isFork: false, orderBy: {field: NAME, direction: ASC}) {
-    \\      nodes { name nameWithOwner description isPrivate stargazerCount primaryLanguage { name } }
-    \\      pageInfo { hasNextPage endCursor }
-    \\    }
-    \\  }
-    \\}
-;
-
-const user_page_query =
-    \\query ProfileUserRepositories($login: String!, $after: String!) {
-    \\  user(login: $login) {
-    \\    repositories(first: 100, after: $after, ownerAffiliations: [OWNER], isFork: false, orderBy: {field: NAME, direction: ASC}) {
-    \\      nodes { name nameWithOwner description isPrivate stargazerCount primaryLanguage { name } }
-    \\      pageInfo { hasNextPage endCursor }
-    \\    }
-    \\  }
-    \\}
-;
-
-const LanguageResponse = struct {
-    name: []const u8,
-};
-
-const RepositoryResponse = struct {
-    name: []const u8,
-    nameWithOwner: []const u8,
-    description: ?[]const u8,
-    isPrivate: bool,
-    stargazerCount: u64,
-    primaryLanguage: ?LanguageResponse,
-};
-
-const PageInfoResponse = struct {
-    hasNextPage: bool,
-    endCursor: ?[]const u8,
-};
-
-const RepositoryConnectionResponse = struct {
-    nodes: []const RepositoryResponse,
-    pageInfo: PageInfoResponse,
-};
-
-const ContributionDayResponse = struct {
-    contributionCount: u64,
-};
-
-const ContributionWeekResponse = struct {
-    contributionDays: []const ContributionDayResponse,
-};
-
-const ContributionCalendarResponse = struct {
-    totalContributions: u64,
-    weeks: []const ContributionWeekResponse,
-};
-
-const RepositoryOwnerResponse = struct {
-    login: []const u8,
-};
-
-const ContributedRepositoryResponse = struct {
-    nameWithOwner: []const u8,
-    isPrivate: bool,
-    owner: RepositoryOwnerResponse,
-};
-
-const ContributionRepositoryResponse = struct {
-    repository: ContributedRepositoryResponse,
-};
-
-const ContributionsResponse = struct {
-    totalCommitContributions: u64,
-    totalIssueContributions: u64,
-    totalPullRequestContributions: u64,
-    totalPullRequestReviewContributions: u64,
-    totalRepositoryContributions: u64,
-    restrictedContributionsCount: u64,
-    contributionCalendar: ContributionCalendarResponse,
-    commitContributionsByRepository: []const ContributionRepositoryResponse,
-};
-
-const AccountResponse = struct {
-    login: []const u8,
-    repositories: RepositoryConnectionResponse,
-    contributionsCollection: ContributionsResponse,
-};
-
-const ViewerResponse = struct {
-    viewer: AccountResponse,
-};
-
-const UserResponse = struct {
-    user: ?AccountResponse,
-};
-
-const ViewerPageResponse = struct {
-    viewer: struct { repositories: RepositoryConnectionResponse },
-};
-
-const UserPageResponse = struct {
-    user: ?struct { repositories: RepositoryConnectionResponse },
-};
-
-const PageSource = enum { viewer, user };
 
 /// Fetches one complete profile result using caller-selected query bounds.
 pub fn fetchProfile(client: *Client, allocator: Allocator, options: model.ProfileOptions) Error!model.ProfileResult {
@@ -173,14 +17,9 @@ pub fn fetchProfile(client: *Client, allocator: Allocator, options: model.Profil
         return .{ .failure = .init(.profile, .missing_credential, options.login) };
     }
 
-    const from = formatDateTime(options.since) catch return error.InvalidOptions;
-    const to = formatDateTime(options.until) catch return error.InvalidOptions;
-    var viewer_result = client.graphql(ViewerResponse, viewer_query, .{
-        .from = from[0..],
-        .to = to[0..],
-        .maxRepositories = options.max_contributed_repositories,
-        .after = @as(?[]const u8, null),
-    }) catch |err| return escapingClientError(err);
+    const from = query.formatDateTime(options.since) catch return error.InvalidOptions;
+    const to = query.formatDateTime(options.until) catch return error.InvalidOptions;
+    var viewer_result = try query.fetchViewer(client, &from, &to, options.max_contributed_repositories);
     defer viewer_result.deinit();
 
     return switch (viewer_result) {
@@ -199,13 +38,7 @@ fn fetchPublicProfile(
     from: *const [20]u8,
     to: *const [20]u8,
 ) Error!model.ProfileResult {
-    var user_result = client.graphql(UserResponse, user_query, .{
-        .login = options.login,
-        .from = from[0..],
-        .to = to[0..],
-        .maxRepositories = options.max_contributed_repositories,
-        .after = @as(?[]const u8, null),
-    }) catch |err| return escapingClientError(err);
+    var user_result = try query.fetchUser(client, options.login, from, to, options.max_contributed_repositories);
     defer user_result.deinit();
 
     return switch (user_result) {
@@ -224,9 +57,9 @@ fn buildProfile(
     client: *Client,
     allocator: Allocator,
     options: model.ProfileOptions,
-    account: AccountResponse,
+    account: query.AccountResponse,
     access: model.Access,
-    page_source: PageSource,
+    page_source: query.PageSource,
 ) Error!model.ProfileResult {
     var owned = try model.initOwned(model.Profile, allocator);
     errdefer owned.deinit();
@@ -248,7 +81,7 @@ fn buildProfile(
         }
         const owned_cursor = try arena.dupe(u8, cursor);
         try cursors.append(arena, owned_cursor);
-        const page_outcome = try fetchRepositoryPage(client, page_source, options.login, owned_cursor);
+        const page_outcome = try query.fetchRepositoryPage(client, page_source, options.login, owned_cursor);
         switch (page_outcome) {
             .failure => |failure| return finishFailure(owned, dataFailure(.profile, options.login, failure)),
             .success => |page| {
@@ -289,54 +122,10 @@ fn buildProfile(
     return .{ .success = owned };
 }
 
-const PageResult = union(enum) {
-    success: ParsedPage,
-    failure: github.Failure,
-};
-
-const ParsedPage = struct {
-    parsed_viewer: ?std.json.Parsed(ViewerPageResponse) = null,
-    parsed_user: ?std.json.Parsed(UserPageResponse) = null,
-    connection: ?RepositoryConnectionResponse,
-
-    fn deinit(self: *ParsedPage) void {
-        if (self.parsed_viewer) |parsed| parsed.deinit();
-        if (self.parsed_user) |parsed| parsed.deinit();
-        self.* = undefined;
-    }
-};
-
-fn fetchRepositoryPage(client: *Client, source: PageSource, login: []const u8, cursor: []const u8) Error!PageResult {
-    return switch (source) {
-        .viewer => blk: {
-            const result = client.graphql(ViewerPageResponse, viewer_page_query, .{ .after = cursor }) catch |err|
-                return escapingClientError(err);
-            switch (result) {
-                .failure => |failure| break :blk .{ .failure = failure },
-                .success => |parsed| break :blk .{ .success = .{
-                    .parsed_viewer = parsed,
-                    .connection = parsed.value.viewer.repositories,
-                } },
-            }
-        },
-        .user => blk: {
-            const result = client.graphql(UserPageResponse, user_page_query, .{ .login = login, .after = cursor }) catch |err|
-                return escapingClientError(err);
-            switch (result) {
-                .failure => |failure| break :blk .{ .failure = failure },
-                .success => |parsed| break :blk .{ .success = .{
-                    .parsed_user = parsed,
-                    .connection = if (parsed.value.user) |user| user.repositories else null,
-                } },
-            }
-        },
-    };
-}
-
 fn appendRepositories(
     arena: Allocator,
     output: *std.ArrayList(model.Repository),
-    nodes: []const RepositoryResponse,
+    nodes: []const query.RepositoryResponse,
     account_login: []const u8,
 ) Allocator.Error!bool {
     try output.ensureUnusedCapacity(arena, nodes.len);
@@ -354,7 +143,7 @@ fn appendRepositories(
     return true;
 }
 
-fn copyContributedRepositories(arena: Allocator, entries: []const ContributionRepositoryResponse) ![]model.ContributedRepository {
+fn copyContributedRepositories(arena: Allocator, entries: []const query.ContributionRepositoryResponse) ![]model.ContributedRepository {
     const result = try arena.alloc(model.ContributedRepository, entries.len);
     for (entries, result) |entry, *destination| {
         destination.* = .{
@@ -407,7 +196,7 @@ fn validRepositoryIdentity(name_with_owner: []const u8, owner_login: []const u8,
     return if (repository_name) |name| std.mem.eql(u8, name_with_owner[slash + 1 ..], name) else true;
 }
 
-fn contributions(response: ContributionsResponse) model.Contributions {
+fn contributions(response: query.ContributionsResponse) model.Contributions {
     var active_days: u32 = 0;
     for (response.contributionCalendar.weeks) |week| {
         for (week.contributionDays) |day| {
@@ -428,28 +217,10 @@ fn contributions(response: ContributionsResponse) model.Contributions {
 
 fn validateOptions(options: model.ProfileOptions) error{InvalidOptions}!void {
     if (options.login.len == 0 or options.since < 0 or options.until < options.since or
-        options.until > max_graphql_timestamp or options.max_contributed_repositories > 100)
+        options.until > query.max_timestamp or options.max_contributed_repositories > 100)
     {
         return error.InvalidOptions;
     }
-}
-
-fn formatDateTime(timestamp: i64) error{InvalidTimestamp}![20]u8 {
-    if (timestamp < 0 or timestamp > max_graphql_timestamp) return error.InvalidTimestamp;
-    const epoch_seconds: std.time.epoch.EpochSeconds = .{ .secs = @intCast(timestamp) };
-    const day = epoch_seconds.getEpochDay().calculateYearDay();
-    const month = day.calculateMonthDay();
-    const clock = epoch_seconds.getDaySeconds();
-    var buffer: [20]u8 = undefined;
-    _ = std.mem.print(&buffer, "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}Z", .{
-        day.year,
-        month.month.numeric(),
-        month.day_index + 1,
-        clock.getHoursIntoDay(),
-        clock.getMinutesIntoHour(),
-        clock.getSecondsIntoMinute(),
-    }) catch unreachable;
-    return buffer;
 }
 
 fn containsString(values: []const []const u8, candidate: []const u8) bool {
@@ -464,13 +235,6 @@ fn dataFailure(operation: model.DataOperation, subject: []const u8, failure: git
 fn finishFailure(owned: model.Owned(model.Profile), failure: model.DataFailure) model.ProfileResult {
     owned.deinit();
     return .{ .failure = failure };
-}
-
-fn escapingClientError(err: anyerror) Allocator.Error {
-    return switch (err) {
-        error.OutOfMemory => error.OutOfMemory,
-        else => unreachable,
-    };
 }
 
 test {

@@ -145,6 +145,11 @@ pub const Client = struct {
         self.* = undefined;
     }
 
+    /// Reports whether this client owns a credential without exposing it.
+    pub fn hasCredential(self: *const Client) bool {
+        return self.token != null;
+    }
+
     /// Performs a REST GET and parses its successful body into `T`.
     pub fn rest(self: *Client, comptime T: type, path_or_url: []const u8) !Result(T) {
         const url = try self.resolveRestUrl(path_or_url);

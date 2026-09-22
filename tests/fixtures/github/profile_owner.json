@@ -1,0 +1,48 @@
+{
+  "data": {
+    "viewer": {
+      "login": "profile-owner",
+      "repositories": {
+        "nodes": [
+          {
+            "name": "private-project",
+            "nameWithOwner": "profile-owner/private-project",
+            "description": "Private fixture repository",
+            "isPrivate": true,
+            "stargazerCount": 0,
+            "primaryLanguage": { "name": "Zig" }
+          }
+        ],
+        "pageInfo": { "hasNextPage": false, "endCursor": null }
+      },
+      "contributionsCollection": {
+        "totalCommitContributions": 8,
+        "totalIssueContributions": 2,
+        "totalPullRequestContributions": 3,
+        "totalPullRequestReviewContributions": 4,
+        "totalRepositoryContributions": 1,
+        "restrictedContributionsCount": 5,
+        "contributionCalendar": {
+          "totalContributions": 18,
+          "weeks": [
+            {
+              "contributionDays": [
+                { "contributionCount": 2 },
+                { "contributionCount": 0 }
+              ]
+            }
+          ]
+        },
+        "commitContributionsByRepository": [
+          {
+            "repository": {
+              "nameWithOwner": "external-org/shared-project",
+              "isPrivate": false,
+              "owner": { "login": "external-org" }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

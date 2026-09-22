@@ -1,0 +1,21 @@
+{
+  "data": {
+    "viewer": {
+      "login": "automation-user",
+      "repositories": {
+        "nodes": [],
+        "pageInfo": { "hasNextPage": false, "endCursor": null }
+      },
+      "contributionsCollection": {
+        "totalCommitContributions": 0,
+        "totalIssueContributions": 0,
+        "totalPullRequestContributions": 0,
+        "totalPullRequestReviewContributions": 0,
+        "totalRepositoryContributions": 0,
+        "restrictedContributionsCount": 0,
+        "contributionCalendar": { "totalContributions": 0, "weeks": [] },
+        "commitContributionsByRepository": []
+      }
+    }
+  }
+}

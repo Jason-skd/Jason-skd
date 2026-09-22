@@ -1,11 +1,11 @@
 //! Fetches and adapts typed GitHub profile data through the shared client.
 
 const std = @import("std");
-const client_module = @import("client.zig");
+const github = @import("../github.zig");
 const model = @import("model.zig");
 
 const Allocator = std.mem.Allocator;
-const Client = client_module.Client;
+const Client = github.Client;
 
 pub const Error = Allocator.Error || error{InvalidOptions};
 
@@ -291,7 +291,7 @@ fn buildProfile(
 
 const PageResult = union(enum) {
     success: ParsedPage,
-    failure: client_module.Failure,
+    failure: github.Failure,
 };
 
 const ParsedPage = struct {
@@ -457,7 +457,7 @@ fn containsString(values: []const []const u8, candidate: []const u8) bool {
     return false;
 }
 
-fn dataFailure(operation: model.DataOperation, subject: []const u8, failure: client_module.Failure) model.DataFailure {
+fn dataFailure(operation: model.DataOperation, subject: []const u8, failure: github.Failure) model.DataFailure {
     return .init(operation, .{ .github = failure }, subject);
 }
 

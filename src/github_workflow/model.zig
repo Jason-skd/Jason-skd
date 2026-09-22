@@ -1,7 +1,7 @@
 //! Owned domain values and failures returned by GitHub profile data sources.
 
 const std = @import("std");
-const client = @import("client.zig");
+const github = @import("../github.zig");
 
 /// Caller-selected inputs for one profile query.
 pub const ProfileOptions = struct {
@@ -86,7 +86,7 @@ pub const InvalidResponse = enum {
 
 /// Cause of a GitHub data-source failure.
 pub const DataFailureCause = union(enum) {
-    github: client.Failure,
+    github: github.Failure,
     missing_credential,
     not_found,
     invalid_response: InvalidResponse,

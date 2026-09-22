@@ -1,9 +1,9 @@
 //! Deterministic tests for REST-backed GitHub data sources.
 
 const std = @import("std");
-const client_module = @import("client.zig");
+const github = @import("../github.zig");
 const model = @import("model.zig");
-const rest_data = @import("rest_data.zig");
+const metadata = @import("metadata.zig");
 
 const FakeResponse = struct {
     status: std.http.Status,
@@ -15,17 +15,17 @@ const FakeTransport = struct {
     expected_path: []const u8,
     calls: usize = 0,
 
-    fn send(context: *anyopaque, allocator: std.mem.Allocator, request: client_module.Request) anyerror!client_module.RawResponse {
+    fn send(context: *anyopaque, allocator: std.mem.Allocator, request: github.Request) anyerror!github.RawResponse {
         const self: *@This() = @ptrCast(@alignCast(context));
         try std.testing.expectEqual(std.http.Method.GET, request.method);
         try std.testing.expect(std.mem.endsWith(u8, request.url, self.expected_path));
         self.calls += 1;
-        return client_module.RawResponse.init(allocator, self.response.status, &.{}, self.response.body);
+        return github.RawResponse.init(allocator, self.response.status, &.{}, self.response.body);
     }
 };
 
-fn initClient(fake: *FakeTransport, allocator: std.mem.Allocator) !client_module.Client {
-    return client_module.Client.initWithTransport(
+fn initClient(fake: *FakeTransport, allocator: std.mem.Allocator) !github.Client {
+    return github.Client.initWithTransport(
         allocator,
         std.Io.failing,
         .{ .context = fake, .send_fn = FakeTransport.send },
@@ -42,7 +42,7 @@ test "organization source returns independently owned facts" {
     };
     var client = try initClient(&fake, std.testing.allocator);
     defer client.deinit();
-    var result = try rest_data.fetchOrganization(&client, std.testing.allocator, "sample-org");
+    var result = try metadata.fetchOrganization(&client, std.testing.allocator, "sample-org");
     defer result.deinit();
     @memset(source, 'x');
     std.testing.allocator.free(source);
@@ -66,7 +66,7 @@ test "repository source maps supplemental metadata" {
     };
     var client = try initClient(&fake, std.testing.allocator);
     defer client.deinit();
-    var result = try rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "sample-owner/sample-repo");
+    var result = try metadata.fetchRepositoryMetadata(&client, std.testing.allocator, "sample-owner/sample-repo");
     defer result.deinit();
 
     switch (result) {
@@ -85,17 +85,17 @@ test "REST sources normalize not found and reject unsafe identities" {
     };
     var client = try initClient(&fake, std.testing.allocator);
     defer client.deinit();
-    var missing = try rest_data.fetchOrganization(&client, std.testing.allocator, "missing-org");
+    var missing = try metadata.fetchOrganization(&client, std.testing.allocator, "missing-org");
     defer missing.deinit();
     try std.testing.expect(missing == .failure);
     try std.testing.expect(missing.failure.cause == .not_found);
 
-    try std.testing.expectError(error.InvalidOptions, rest_data.fetchOrganization(&client, std.testing.allocator, "."));
-    try std.testing.expectError(error.InvalidOptions, rest_data.fetchOrganization(&client, std.testing.allocator, ".."));
-    try std.testing.expectError(error.InvalidOptions, rest_data.fetchOrganization(&client, std.testing.allocator, "../org"));
-    try std.testing.expectError(error.InvalidOptions, rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/."));
-    try std.testing.expectError(error.InvalidOptions, rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/.."));
-    try std.testing.expectError(error.InvalidOptions, rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/repo/extra"));
+    try std.testing.expectError(error.InvalidOptions, metadata.fetchOrganization(&client, std.testing.allocator, "."));
+    try std.testing.expectError(error.InvalidOptions, metadata.fetchOrganization(&client, std.testing.allocator, ".."));
+    try std.testing.expectError(error.InvalidOptions, metadata.fetchOrganization(&client, std.testing.allocator, "../org"));
+    try std.testing.expectError(error.InvalidOptions, metadata.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/."));
+    try std.testing.expectError(error.InvalidOptions, metadata.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/.."));
+    try std.testing.expectError(error.InvalidOptions, metadata.fetchRepositoryMetadata(&client, std.testing.allocator, "owner/repo/extra"));
 }
 
 test "REST sources reject response identity mismatches" {
@@ -108,7 +108,7 @@ test "REST sources reject response identity mismatches" {
     };
     var client = try initClient(&fake, std.testing.allocator);
     defer client.deinit();
-    var result = try rest_data.fetchRepositoryMetadata(&client, std.testing.allocator, "sample-owner/sample-repo");
+    var result = try metadata.fetchRepositoryMetadata(&client, std.testing.allocator, "sample-owner/sample-repo");
     defer result.deinit();
     try std.testing.expect(result == .failure);
     try std.testing.expectEqual(model.InvalidResponse.invalid_repository_identity, result.failure.cause.invalid_response);
@@ -124,11 +124,11 @@ test "REST sources reject missing required fields and preserve GitHub failure co
     };
     var invalid_client = try initClient(&invalid_fake, std.testing.allocator);
     defer invalid_client.deinit();
-    var invalid = try rest_data.fetchOrganization(&invalid_client, std.testing.allocator, "sample-org");
+    var invalid = try metadata.fetchOrganization(&invalid_client, std.testing.allocator, "sample-org");
     defer invalid.deinit();
     try std.testing.expect(invalid == .failure);
     try std.testing.expectEqual(model.DataOperation.organization, invalid.failure.operation);
-    try std.testing.expectEqual(client_module.FailureKind.invalid_json, invalid.failure.cause.github.kind);
+    try std.testing.expectEqual(github.FailureKind.invalid_json, invalid.failure.cause.github.kind);
     try std.testing.expectEqualStrings("sample-org", invalid.failure.subject());
 
     var failed_fake = FakeTransport{
@@ -137,11 +137,11 @@ test "REST sources reject missing required fields and preserve GitHub failure co
     };
     var failed_client = try initClient(&failed_fake, std.testing.allocator);
     defer failed_client.deinit();
-    var failed = try rest_data.fetchRepositoryMetadata(&failed_client, std.testing.allocator, "sample-owner/sample-repo");
+    var failed = try metadata.fetchRepositoryMetadata(&failed_client, std.testing.allocator, "sample-owner/sample-repo");
     defer failed.deinit();
     try std.testing.expect(failed == .failure);
     try std.testing.expectEqual(model.DataOperation.repository_metadata, failed.failure.operation);
-    try std.testing.expectEqual(client_module.FailureKind.retryable_http, failed.failure.cause.github.kind);
+    try std.testing.expectEqual(github.FailureKind.retryable_http, failed.failure.cause.github.kind);
     try std.testing.expectEqualStrings("sample-owner/sample-repo", failed.failure.subject());
 }
 
@@ -156,7 +156,7 @@ fn organizationAllocationFailure(allocator: std.mem.Allocator) !void {
     };
     var client = try initClient(&fake, allocator);
     defer client.deinit();
-    var result = try rest_data.fetchOrganization(&client, allocator, "sample-org");
+    var result = try metadata.fetchOrganization(&client, allocator, "sample-org");
     defer result.deinit();
     if (result == .failure) return error.UnexpectedFailure;
 }

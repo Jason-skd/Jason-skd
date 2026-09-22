@@ -1,13 +1,13 @@
 //! Deterministic tests for the typed GitHub profile data source.
 
 const std = @import("std");
-const client_module = @import("client.zig");
+const github = @import("../github.zig");
 const model = @import("model.zig");
 const profile = @import("profile.zig");
 
-const Client = client_module.Client;
-const RawResponse = client_module.RawResponse;
-const Request = client_module.Request;
+const Client = github.Client;
+const RawResponse = github.RawResponse;
+const Request = github.Request;
 const user_agent = "profile-source-test";
 
 const FakeResponse = struct { body: []const u8 };
@@ -26,7 +26,7 @@ const FakeTransport = struct {
     fn send(context: *anyopaque, allocator: std.mem.Allocator, request: Request) anyerror!RawResponse {
         const self: *@This() = @ptrCast(@alignCast(context));
         try std.testing.expectEqual(std.http.Method.POST, request.method);
-        try std.testing.expectEqualStrings(client_module.graphql_url, request.url);
+        try std.testing.expectEqualStrings(github.graphql_url, request.url);
         const payload = request.payload orelse return error.MissingPayload;
         if (std.mem.find(u8, payload, "1970-01-01T00:00:00Z") != null) self.saw_start = true;
         if (std.mem.find(u8, payload, "1970-01-01T00:00:01Z") != null) self.saw_end = true;
@@ -354,7 +354,7 @@ test "profile source rejects missing required fields and ignores unrelated field
     });
     defer missing.deinit();
     try std.testing.expect(missing == .failure);
-    try std.testing.expectEqual(client_module.FailureKind.invalid_json, missing.failure.cause.github.kind);
+    try std.testing.expectEqual(github.FailureKind.invalid_json, missing.failure.cause.github.kind);
 
     const with_future_field = profile_body[0 .. profile_body.len - 4] ++ ",\"future\":true}}}}";
     var future_fake = FakeTransport{ .responses = &.{.{ .body = with_future_field }} };

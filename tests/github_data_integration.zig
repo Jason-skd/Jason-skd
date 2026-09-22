@@ -2,6 +2,7 @@
 
 const std = @import("std");
 const github = @import("profile_generator").github;
+const github_workflow = @import("profile_generator").github_workflow;
 
 const FixtureTransport = struct {
     bodies: []const []const u8,
@@ -41,7 +42,7 @@ test "public API returns private facts for the authenticated target" {
     var transport = FixtureTransport{ .bodies = &.{@embedFile("fixtures/github/profile_owner.json")} };
     var client = try initClient(&transport);
     defer client.deinit();
-    var result = try github.fetchProfile(&client, std.testing.allocator, .{
+    var result = try github_workflow.fetchProfile(&client, std.testing.allocator, .{
         .login = "profile-owner",
         .since = 0,
         .until = 1,
@@ -52,7 +53,7 @@ test "public API returns private facts for the authenticated target" {
     switch (result) {
         .failure => return error.UnexpectedFailure,
         .success => |owned| {
-            try std.testing.expectEqual(github.Access.authenticated_as_target, owned.value.access);
+            try std.testing.expectEqual(github_workflow.Access.authenticated_as_target, owned.value.access);
             try std.testing.expect(owned.value.owned_repositories[0].is_private);
             try std.testing.expectEqual(@as(u64, 5), owned.value.contributions.viewer_inaccessible);
             try std.testing.expectEqualStrings(
@@ -70,7 +71,7 @@ test "public API returns public-only facts after identity fallback" {
     } };
     var client = try initClient(&transport);
     defer client.deinit();
-    var result = try github.fetchProfile(&client, std.testing.allocator, .{
+    var result = try github_workflow.fetchProfile(&client, std.testing.allocator, .{
         .login = "profile-owner",
         .since = 0,
         .until = 1,
@@ -81,7 +82,7 @@ test "public API returns public-only facts after identity fallback" {
     switch (result) {
         .failure => return error.UnexpectedFailure,
         .success => |owned| {
-            try std.testing.expectEqual(github.Access.public_only, owned.value.access);
+            try std.testing.expectEqual(github_workflow.Access.public_only, owned.value.access);
             try std.testing.expect(!owned.value.owned_repositories[0].is_private);
             try std.testing.expectEqual(@as(usize, 2), transport.calls);
         },
@@ -100,7 +101,7 @@ test "public API returns organization and repository REST facts" {
         .{ .user_agent = "github-data-integration", .retry = .{ .max_attempts = 1 } },
     );
     defer organization_client.deinit();
-    var organization = try github.fetchOrganization(&organization_client, std.testing.allocator, "sample-org");
+    var organization = try github_workflow.fetchOrganization(&organization_client, std.testing.allocator, "sample-org");
     defer organization.deinit();
     switch (organization) {
         .failure => return error.UnexpectedFailure,
@@ -118,7 +119,7 @@ test "public API returns organization and repository REST facts" {
         .{ .user_agent = "github-data-integration", .retry = .{ .max_attempts = 1 } },
     );
     defer repository_client.deinit();
-    var repository = try github.fetchRepositoryMetadata(
+    var repository = try github_workflow.fetchRepositoryMetadata(
         &repository_client,
         std.testing.allocator,
         "sample-org/sample-project",

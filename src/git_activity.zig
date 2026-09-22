@@ -140,7 +140,7 @@ fn scanRemote(runner: *const Runner, gpa: Allocator, options: Options, remote: S
         "--filter=blob:none", since_arg, remote.url,      destination,
     };
     // Phase 2: clone with the caller's token, then scan the temporary checkout.
-    cloneRemote(runner, destination, &argv, options.token) catch |err| return err;
+    try cloneRemote(runner, destination, &argv, options.token);
     var scanned = scanPath(runner, gpa, options, remote.name, destination) catch |err| {
         lifecycle.cleanupClone(runner.io, destination) catch return error.CleanupFailed;
         return err;

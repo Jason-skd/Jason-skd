@@ -58,6 +58,38 @@ test {
 
 这是当前标准库用于聚合子模块测试的常见形式，可在 `std/json.zig`、`std/fs.zig`、`std/Random.zig` 和 `std/Io/Threaded.zig` 等文件中找到。新增模块的测试应由最近的模块根纳入，而不是依靠未被引用的文件自动发现；若实现与测试拆在不同文件，由实现模块的匿名测试块导入自己的测试文件，上层根只导入实现模块，避免上层知道下层测试布局。
 
+## Unix 秒到固定 UTC DateTime
+
+适用范围：把非负 Unix 秒格式化为只含四位年份和整秒的 UTC `YYYY-MM-DDTHH:MM:SSZ` 文本，例如 GitHub GraphQL `DateTime` 变量；不适用于负时间戳、时区转换、闰秒或带小数秒的格式。
+
+- 当前 `std.time.epoch` 提供从 `EpochSeconds` 到年、月、日和日内时分秒的 UTC 拆分，但没有公开的 RFC 3339 formatter。先在领域边界拒绝负时间戳，并按目标协议限制最大年份，再构造 `EpochSeconds`。
+- 四位年份、整秒和尾随 `Z` 的结果恒为 20 字节。使用 `[20]u8` 与 `std.mem.print` 可以无分配地生成结果；`std.fmt.bufPrint` 在当前 revision 已标记为 deprecated。
+- `MonthAndDay.day_index` 从 0 开始，输出日期时必须加 1；`Month.numeric()` 已返回从 1 开始的月份。
+
+```zig
+const seconds: std.time.epoch.EpochSeconds = .{ .secs = timestamp };
+const year_day = seconds.getEpochDay().calculateYearDay();
+const month_day = year_day.calculateMonthDay();
+const clock = seconds.getDaySeconds();
+var buffer: [20]u8 = undefined;
+_ = std.mem.print(&buffer, "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}Z", .{
+    year_day.year,
+    month_day.month.numeric(),
+    month_day.day_index + 1,
+    clock.getHoursIntoDay(),
+    clock.getMinutesIntoHour(),
+    clock.getSecondsIntoMinute(),
+}) catch unreachable;
+```
+
+关键源码：
+
+- `../zig/lib/std/time/epoch.zig`：`EpochSeconds.getEpochDay`、`EpochSeconds.getDaySeconds`、`EpochDay.calculateYearDay`、`YearAndDay.calculateMonthDay`、`Month.numeric` 及 `epoch decoding` 测试
+- `../zig/lib/std/mem.zig`：`PrintError`、`print` 及其固定缓冲测试
+- `../zig/lib/std/fmt.zig`：已弃用的 `bufPrint` 转发入口
+
+验证基线为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。GitHub profile 数据源测试覆盖 Unix epoch、闰日和四位年份上界 `9999-12-31T23:59:59Z`。若标准库加入正式 DateTime/RFC 3339 formatter、epoch 类型开始支持负值，或目标协议的精度与年份范围改变，应重新评估此写法。
+
 ## 有界子进程与敏感缓冲区
 
 适用范围：需要捕获输出、继承或覆盖环境并可能处理凭据的内部子进程 adapter。

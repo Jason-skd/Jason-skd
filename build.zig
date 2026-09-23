@@ -75,6 +75,19 @@ pub fn build(b: *std.Build) void {
     });
     const run_git_activity_integration_tests = b.addRunArtifact(git_activity_integration_tests);
 
+    const github_data_integration_tests = b.addTest(.{
+        .name = "github-data-integration-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/github_data_integration.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "profile_generator", .module = app_module },
+            },
+        }),
+    });
+    const run_github_data_integration_tests = b.addRunArtifact(github_data_integration_tests);
+
     const production_config_options = b.addOptions();
     production_config_options.addOptionPath("profile_path", b.path("profile.yaml"));
     const production_config_tests = b.addTest(.{
@@ -95,5 +108,6 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_integration_tests.step);
     test_step.dependOn(&run_git_activity_integration_tests.step);
+    test_step.dependOn(&run_github_data_integration_tests.step);
     test_step.dependOn(&run_production_config_tests.step);
 }

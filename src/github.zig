@@ -1,7 +1,10 @@
-//! GitHub REST and GraphQL integration for the profile generator.
+//! Reusable typed GitHub REST and GraphQL client.
 
 const client = @import("github/client.zig");
 
+pub const graphql_url = client.graphql_url;
+pub const rest_base_url = client.rest_base_url;
+pub const api_version = client.api_version;
 pub const Client = client.Client;
 pub const Config = client.Config;
 pub const RetryConfig = client.RetryConfig;

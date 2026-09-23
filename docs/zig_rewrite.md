@@ -154,7 +154,7 @@ MVP 配置 schema 不接受 `excludes`。如果旧配置仍保留该字段，应
 - 提供 MVP 默认值；
 - 拒绝不受支持的 `excludes` 配置。
 
-### `github/client`
+### `github`
 
 负责：
 
@@ -168,9 +168,9 @@ MVP 配置 schema 不接受 `excludes`。如果旧配置仍保留该字段，应
 
 GraphQL helper 只负责序列化 `{query, variables}` 和解析 `{data, errors}`，不解析 GraphQL 语法，也不实现动态 query builder。
 
-### `github/models` 与数据源
+### `github_workflow`
 
-负责声明 GitHub 响应和主页所需的领域类型。账户、组织、仓库等数据源只依赖 `github/client` 的窄接口，不直接操作底层 HTTP client。
+负责 Profile、Organization 和 Repository metadata 的 GitHub 数据采集流程，声明内部 API response 类型和主页所需的 owned Domain 类型。它只依赖公开 `github` client，不直接操作底层 HTTP client；viewer fallback、owned repository 分页和 response 到 Domain 的转换属于这一层，跨数据源降级仍由 `pipeline` 决定。
 
 ### `json`
 
@@ -271,10 +271,10 @@ typing 组件在 MVP 直接使用配置宽度，不复刻 Python `unicodedata` �
 CLI + environment
         |
         v
-typed config ---------> GitHub client ------> REST / GraphQL
+typed config ---------> GitHub workflow ----> GitHub client ----> REST / GraphQL
         |                      |
         |                      v
-        |                typed API models
+        |               owned Domain values
         |
         +---------------> Git activity ------> system git
                                |

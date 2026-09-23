@@ -1,0 +1,35 @@
+{
+  "data": {
+    "user": {
+      "login": "profile-owner",
+      "repositories": {
+        "nodes": [
+          {
+            "name": "public-project",
+            "nameWithOwner": "profile-owner/public-project",
+            "description": null,
+            "isPrivate": false,
+            "stargazerCount": 7,
+            "primaryLanguage": null
+          }
+        ],
+        "pageInfo": { "hasNextPage": false, "endCursor": null }
+      },
+      "contributionsCollection": {
+        "totalCommitContributions": 2,
+        "totalIssueContributions": 0,
+        "totalPullRequestContributions": 1,
+        "totalPullRequestReviewContributions": 0,
+        "totalRepositoryContributions": 0,
+        "restrictedContributionsCount": 0,
+        "contributionCalendar": {
+          "totalContributions": 3,
+          "weeks": [
+            { "contributionDays": [{ "contributionCount": 1 }] }
+          ]
+        },
+        "commitContributionsByRepository": []
+      }
+    }
+  }
+}

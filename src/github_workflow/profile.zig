@@ -1,0 +1,242 @@
+//! Fetches and adapts typed GitHub profile data through the shared client.
+
+const std = @import("std");
+const github = @import("../github.zig");
+const model = @import("model.zig");
+const query = @import("profile_query.zig");
+
+const Allocator = std.mem.Allocator;
+const Client = github.Client;
+
+pub const Error = Allocator.Error || error{InvalidOptions};
+
+/// Fetches one complete profile result using caller-selected query bounds.
+pub fn fetchProfile(client: *Client, allocator: Allocator, options: model.ProfileOptions) Error!model.ProfileResult {
+    try validateOptions(options);
+    if (!client.hasCredential()) {
+        return .{ .failure = .init(.profile, .missing_credential, options.login) };
+    }
+
+    const from = query.formatDateTime(options.since) catch return error.InvalidOptions;
+    const to = query.formatDateTime(options.until) catch return error.InvalidOptions;
+    var viewer_result = try query.fetchViewer(client, &from, &to, options.max_contributed_repositories);
+    defer viewer_result.deinit();
+
+    return switch (viewer_result) {
+        .failure => |failure| .{ .failure = dataFailure(.profile, options.login, failure) },
+        .success => |parsed| if (std.ascii.eqlIgnoreCase(parsed.value.viewer.login, options.login))
+            buildProfile(client, allocator, options, parsed.value.viewer, .authenticated_as_target, .viewer)
+        else
+            fetchPublicProfile(client, allocator, options, &from, &to),
+    };
+}
+
+fn fetchPublicProfile(
+    client: *Client,
+    allocator: Allocator,
+    options: model.ProfileOptions,
+    from: *const [20]u8,
+    to: *const [20]u8,
+) Error!model.ProfileResult {
+    var user_result = try query.fetchUser(client, options.login, from, to, options.max_contributed_repositories);
+    defer user_result.deinit();
+
+    return switch (user_result) {
+        .failure => |failure| .{ .failure = dataFailure(.profile, options.login, failure) },
+        .success => |parsed| if (parsed.value.user) |account|
+            if (std.ascii.eqlIgnoreCase(account.login, options.login))
+                buildProfile(client, allocator, options, account, .public_only, .user)
+            else
+                .{ .failure = .init(.profile, .{ .invalid_response = .unexpected_login }, options.login) }
+        else
+            .{ .failure = .init(.profile, .not_found, options.login) },
+    };
+}
+
+fn buildProfile(
+    client: *Client,
+    allocator: Allocator,
+    options: model.ProfileOptions,
+    account: query.AccountResponse,
+    access: model.Access,
+    page_source: query.PageSource,
+) Error!model.ProfileResult {
+    var owned = try model.initOwned(model.Profile, allocator);
+    errdefer owned.deinit();
+    const arena = owned.arena.allocator();
+
+    var repositories: std.ArrayList(model.Repository) = .empty;
+    if (!try appendRepositories(arena, &repositories, account.repositories.nodes, account.login)) {
+        return finishFailure(owned, .init(.profile, .{ .invalid_response = .invalid_repository_identity }, options.login));
+    }
+
+    var cursors: std.ArrayList([]const u8) = .empty;
+    var has_next_page = account.repositories.pageInfo.hasNextPage;
+    var next_cursor = account.repositories.pageInfo.endCursor;
+    while (has_next_page) {
+        const cursor = next_cursor orelse
+            return finishFailure(owned, .init(.profile, .{ .invalid_response = .malformed_pagination }, options.login));
+        if (cursor.len == 0 or containsString(cursors.items, cursor)) {
+            return finishFailure(owned, .init(.profile, .{ .invalid_response = .malformed_pagination }, options.login));
+        }
+        const owned_cursor = try arena.dupe(u8, cursor);
+        try cursors.append(arena, owned_cursor);
+        const page_outcome = try query.fetchRepositoryPage(client, page_source, options.login, owned_cursor);
+        switch (page_outcome) {
+            .failure => |failure| return finishFailure(owned, dataFailure(.profile, options.login, failure)),
+            .success => |page| {
+                var page_result = page;
+                defer page_result.deinit();
+                const connection = page_result.connection orelse
+                    return finishFailure(owned, .init(.profile, .not_found, options.login));
+                if (!try appendRepositories(arena, &repositories, connection.nodes, account.login)) {
+                    return finishFailure(owned, .init(.profile, .{ .invalid_response = .invalid_repository_identity }, options.login));
+                }
+                has_next_page = connection.pageInfo.hasNextPage;
+                next_cursor = if (has_next_page) blk: {
+                    const value = connection.pageInfo.endCursor orelse
+                        return finishFailure(owned, .init(.profile, .{ .invalid_response = .malformed_pagination }, options.login));
+                    break :blk try arena.dupe(u8, value);
+                } else null;
+            },
+        }
+    }
+
+    const owned_repositories = try repositories.toOwnedSlice(arena);
+    if (!validUniqueRepositories(owned_repositories, account.login)) {
+        return finishFailure(owned, .init(.profile, .{ .invalid_response = .invalid_repository_identity }, options.login));
+    }
+
+    var contributed = try copyContributedRepositories(arena, account.contributionsCollection.commitContributionsByRepository);
+    if (!normalizeContributedRepositories(&contributed)) {
+        return finishFailure(owned, .init(.profile, .{ .invalid_response = .invalid_repository_identity }, options.login));
+    }
+
+    owned.value = .{
+        .login = try arena.dupe(u8, account.login),
+        .access = access,
+        .contributions = contributions(account.contributionsCollection),
+        .owned_repositories = owned_repositories,
+        .contributed_repositories = contributed,
+    };
+    return .{ .success = owned };
+}
+
+fn appendRepositories(
+    arena: Allocator,
+    output: *std.ArrayList(model.Repository),
+    nodes: []const query.RepositoryResponse,
+    account_login: []const u8,
+) Allocator.Error!bool {
+    try output.ensureUnusedCapacity(arena, nodes.len);
+    for (nodes) |repository| {
+        if (!validRepositoryIdentity(repository.nameWithOwner, account_login, repository.name)) return false;
+        output.appendAssumeCapacity(.{
+            .name = try arena.dupe(u8, repository.name),
+            .name_with_owner = try arena.dupe(u8, repository.nameWithOwner),
+            .description = if (repository.description) |value| try arena.dupe(u8, value) else null,
+            .is_private = repository.isPrivate,
+            .stars = repository.stargazerCount,
+            .primary_language = if (repository.primaryLanguage) |language| try arena.dupe(u8, language.name) else null,
+        });
+    }
+    return true;
+}
+
+fn copyContributedRepositories(arena: Allocator, entries: []const query.ContributionRepositoryResponse) ![]model.ContributedRepository {
+    const result = try arena.alloc(model.ContributedRepository, entries.len);
+    for (entries, result) |entry, *destination| {
+        destination.* = .{
+            .name_with_owner = try arena.dupe(u8, entry.repository.nameWithOwner),
+            .owner_login = try arena.dupe(u8, entry.repository.owner.login),
+            .is_private = entry.repository.isPrivate,
+        };
+    }
+    return result;
+}
+
+fn normalizeContributedRepositories(items: *[]model.ContributedRepository) bool {
+    std.mem.sort(model.ContributedRepository, items.*, {}, struct {
+        fn lessThan(_: void, lhs: model.ContributedRepository, rhs: model.ContributedRepository) bool {
+            const order = std.ascii.orderIgnoreCase(lhs.name_with_owner, rhs.name_with_owner);
+            return order == .lt or (order == .eq and std.mem.order(u8, lhs.name_with_owner, rhs.name_with_owner) == .lt);
+        }
+    }.lessThan);
+
+    var write_index: usize = 0;
+    for (items.*) |item| {
+        if (!validRepositoryIdentity(item.name_with_owner, item.owner_login, null)) return false;
+        if (write_index != 0 and std.ascii.eqlIgnoreCase(items.*[write_index - 1].name_with_owner, item.name_with_owner)) {
+            const previous = items.*[write_index - 1];
+            if (!std.ascii.eqlIgnoreCase(previous.owner_login, item.owner_login) or previous.is_private != item.is_private) return false;
+            continue;
+        }
+        items.*[write_index] = item;
+        write_index += 1;
+    }
+    items.* = items.*[0..write_index];
+    return true;
+}
+
+fn validUniqueRepositories(items: []model.Repository, account_login: []const u8) bool {
+    for (items, 0..) |item, index| {
+        if (!validRepositoryIdentity(item.name_with_owner, account_login, item.name)) return false;
+        for (items[0..index]) |previous| {
+            if (std.ascii.eqlIgnoreCase(previous.name_with_owner, item.name_with_owner)) return false;
+        }
+    }
+    return true;
+}
+
+fn validRepositoryIdentity(name_with_owner: []const u8, owner_login: []const u8, repository_name: ?[]const u8) bool {
+    const slash = std.mem.findScalar(u8, name_with_owner, '/') orelse return false;
+    if (slash == 0 or slash + 1 == name_with_owner.len) return false;
+    if (std.mem.findScalarPos(u8, name_with_owner, slash + 1, '/') != null) return false;
+    if (owner_login.len == 0 or !std.ascii.eqlIgnoreCase(name_with_owner[0..slash], owner_login)) return false;
+    return if (repository_name) |name| std.mem.eql(u8, name_with_owner[slash + 1 ..], name) else true;
+}
+
+fn contributions(response: query.ContributionsResponse) model.Contributions {
+    var active_days: u32 = 0;
+    for (response.contributionCalendar.weeks) |week| {
+        for (week.contributionDays) |day| {
+            if (day.contributionCount > 0) active_days += 1;
+        }
+    }
+    return .{
+        .calendar_total = response.contributionCalendar.totalContributions,
+        .active_days = active_days,
+        .commits = response.totalCommitContributions,
+        .issues = response.totalIssueContributions,
+        .pull_requests = response.totalPullRequestContributions,
+        .reviews = response.totalPullRequestReviewContributions,
+        .repositories_created = response.totalRepositoryContributions,
+        .viewer_inaccessible = response.restrictedContributionsCount,
+    };
+}
+
+fn validateOptions(options: model.ProfileOptions) error{InvalidOptions}!void {
+    if (options.login.len == 0 or options.since < 0 or options.until < options.since or
+        options.until > query.max_timestamp or options.max_contributed_repositories > 100)
+    {
+        return error.InvalidOptions;
+    }
+}
+
+fn containsString(values: []const []const u8, candidate: []const u8) bool {
+    for (values) |value| if (std.mem.eql(u8, value, candidate)) return true;
+    return false;
+}
+
+fn dataFailure(operation: model.DataOperation, subject: []const u8, failure: github.Failure) model.DataFailure {
+    return .init(operation, .{ .github = failure }, subject);
+}
+
+fn finishFailure(owned: model.Owned(model.Profile), failure: model.DataFailure) model.ProfileResult {
+    owned.deinit();
+    return .{ .failure = failure };
+}
+
+test {
+    _ = @import("profile_test.zig");
+}

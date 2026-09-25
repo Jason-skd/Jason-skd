@@ -43,6 +43,22 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the profile generator");
     run_step.dependOn(&run_command.step);
 
+    const catalog_generator = b.addExecutable(.{
+        .name = "language-catalog-generator",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/language_catalog_generator.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "profile_generator", .module = app_module },
+            },
+        }),
+    });
+    const catalog_run = b.addRunArtifact(catalog_generator);
+    catalog_run.addPassthruArgs();
+    const catalog_step = b.step("generate-language-catalog", "Generate the offline Zig language catalog");
+    catalog_step.dependOn(&catalog_run.step);
+
     const unit_tests = b.addTest(.{
         .name = "unit-tests",
         .root_module = app_module,
@@ -104,10 +120,24 @@ pub fn build(b: *std.Build) void {
     });
     const run_production_config_tests = b.addRunArtifact(production_config_tests);
 
+    const language_catalog_tests = b.addTest(.{
+        .name = "language-catalog-generator-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/language_catalog_generator.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "profile_generator", .module = app_module },
+            },
+        }),
+    });
+    const run_language_catalog_tests = b.addRunArtifact(language_catalog_tests);
+
     const test_step = b.step("test", "Run all tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_integration_tests.step);
     test_step.dependOn(&run_git_activity_integration_tests.step);
     test_step.dependOn(&run_github_data_integration_tests.step);
     test_step.dependOn(&run_production_config_tests.step);
+    test_step.dependOn(&run_language_catalog_tests.step);
 }

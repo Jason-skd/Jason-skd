@@ -1,0 +1,25 @@
+# Reduced upstream Linguist shape used by offline generator tests.
+C:
+  type: programming
+  extensions:
+    - .c
+    - .h
+  filenames: []
+C++:
+  type: programming
+  extensions:
+    - .cc
+    - .h
+  filenames: []
+Markdown:
+  type: prose
+  extensions:
+    - .md
+  filenames:
+    - README
+Zig:
+  type: programming
+  extensions:
+    - .zig
+  filenames:
+    - build.zig

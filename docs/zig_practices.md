@@ -58,6 +58,12 @@ test {
 
 这是当前标准库用于聚合子模块测试的常见形式，可在 `std/json.zig`、`std/fs.zig`、`std/Random.zig` 和 `std/Io/Threaded.zig` 等文件中找到。新增模块的测试应由最近的模块根纳入，而不是依靠未被引用的文件自动发现；若实现与测试拆在不同文件，由实现模块的匿名测试块导入自己的测试文件，上层根只导入实现模块，避免上层知道下层测试布局。
 
+## 生成 Zig 字符串字面量
+
+适用范围：从外部文本生成 Zig 源码中的双引号字符串常量。对 `std.Io.Writer` 调用 `printStringEscaped(bytes)`，它负责写入引号并通过 `std.zig.stringEscape` 转义内容；不应使用 `{s}` 直接拼入字面量。调用方仍须验证输入格式和生成源码的整体结构。
+
+关键源码：`../../zig/lib/std/Io/Writer.zig` 的 `printStringEscaped`、`../../zig/lib/std/zig.zig` 的 `stringEscape` 和 `StringEscapeWriter` 测试。验证基线为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`；本仓库语言目录生成器的引号与反斜杠测试、真实快照 `ast-check` 和完整测试通过。工具链改变该 API 或转义规则时需重新核对。
+
 ## Unix 秒到固定 UTC DateTime
 
 适用范围：把非负 Unix 秒格式化为只含四位年份和整秒的 UTC `YYYY-MM-DDTHH:MM:SSZ` 文本，例如 GitHub GraphQL `DateTime` 变量；不适用于负时间戳、时区转换、闰秒或带小数秒的格式。

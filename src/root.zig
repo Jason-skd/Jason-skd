@@ -7,6 +7,8 @@ pub const github_workflow = @import("github_workflow.zig");
 pub const git_activity = @import("git_activity.zig");
 pub const language_catalog_generator = @import("language_catalog_generator.zig");
 pub const language_catalog_snapshot = @import("language_catalog_snapshot.zig");
+pub const language_catalog = @import("language_catalog.zig");
+pub const language_stats = @import("language_stats.zig");
 
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {
@@ -23,4 +25,6 @@ test {
     _ = git_activity;
     _ = language_catalog_generator;
     _ = language_catalog_snapshot;
+    _ = language_catalog;
+    _ = language_stats;
 }

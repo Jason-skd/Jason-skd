@@ -264,3 +264,15 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 - zig-clap `clap.zig`：`parseEx`、`ResultEx.deinit`、`Arguments`、`Diagnostic.report`、`help`
 
 验证基线：Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`、zig-clap revision `05faf3905e8548f5cc269a8836e154065e70128d`。本仓库 CLI 单测在解析函数返回后检查 argv 与环境值的指针身份，并覆盖帮助、诊断、凭据优先级和空值回退。工具链或 zig-clap revision 改变时必须重新核对这些所有权结论。
+
+## 静态键聚合与拥有切片
+
+适用范围：用生命周期覆盖整个结果的静态字符串作为哈希键，并把排序后的聚合数据交给调用方。
+
+- `std.StringHashMapUnmanaged` 不拥有键或值；调用方用同一 allocator 执行 `put` 和 `deinit`。静态目录中的语言名可以直接作键；输入缓冲区中的临时字符串不能在其释放后继续作为键。
+- `std.ArrayList(T).toOwnedSlice(allocator)` 会清空列表并把返回切片交给调用方；它在原地缩容失败时仍可能分配，所以转移前保留 `defer list.deinit(allocator)`，结果再由原 allocator 释放。`std.mem.sort` 是稳定排序；比较器同时处理权重和名称时，哈希表迭代顺序不会影响输出。
+- `std.math.add(u64, a, b)` 用 `error.Overflow` 表示加法溢出。比例计算如果需要跨多个接近 `u64` 上限的权重求和，应使用足够宽的中间类型，并在整数除法后按确定的顺序分配余数。
+
+关键源码：`../zig/lib/std/hash_map.zig` 的 `StringHashMapUnmanaged`、`put`、`deinit` 和 `getOrPut allocation failure` 测试；`../zig/lib/std/Build/Step/Options.zig` 的静态键 map 调用；`../zig/lib/std/array_list.zig` 的 `toOwnedSlice`、`deinit`；`../zig/lib/std/mem.zig` 的 `sort`；`../zig/lib/std/math.zig` 的 `add`。
+
+验证基线为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。语言统计测试覆盖排序、百分比、大权重和 `checkAllAllocationFailures` 对完整聚合链的逐分配失败注入。工具链改变 map 键所有权、列表转移或排序语义，或聚合键不再具有静态生命周期时，必须重新检查这些结论。

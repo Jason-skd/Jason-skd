@@ -25,3 +25,21 @@
 - [AI 工作流治理](docs/governance/workflow.md)：调查、实施、提交与交付流程。
 - [通用工程约束](docs/governance/engineering.md)：设计、实现、测试与完成标准。
 - [本仓库治理与工程边界](docs/governance/repository.md)：特有门禁、当前状态与项目权威来源。
+
+## Language catalog maintenance
+
+The catalog source is generated offline from GitHub Linguist's `languages.yml`.
+The generator reads `type`, `extensions`, and `filenames`, validates the
+supported upstream fields, and rejects unsupported shapes. The upstream
+revision is passed explicitly and recorded in the generated source metadata.
+
+```text
+zig build generate-language-catalog -- path/to/languages.yml src/language_catalog_snapshot.zig <upstream-revision>
+```
+
+The snapshot at `src/language_catalog_snapshot.zig` uses upstream revision
+538da05f034fa5c83bd81df128d144e208898da3 from
+github-linguist/linguist/lib/linguist/languages.yml.
+
+The generator does not download source data, run Git, or participate in normal
+runtime generation. Unsupported YAML fields and shapes fail the command.

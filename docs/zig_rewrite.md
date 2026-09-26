@@ -235,6 +235,13 @@ MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存�
 
 ### `components` 与 `assemble`
 
+时间窗口由应用 pipeline 使用 `config.window_days` 统一确定，并用于 Git/GitHub
+采集及 payload 构建。生产配置为 365 天；不得采集较短窗口却标注较长范围。
+近期项目从昨天开始按 UTC+8 自然日选择，最大回溯天数使用该配置，不另设
+60 天上限。stats 与 recent-project payload 均携带窗口天数；无项目时也保留
+该字段，供组件生成 `No commits to show in the last N days`。窗口不从最早
+提交日期反推。stats 默认标题随窗口变化，显式自定义标题保持原样。
+
 - 每个 section 使用标准库 Writer 输出 Markdown/HTML；
 - component 只接收自己的配置切片和数据类型；
 - `assemble` 负责顺序、启用状态、非空校验和 section 间分隔；

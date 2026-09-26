@@ -309,3 +309,30 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 本仓库 `render_page_test.zig` 的完整页面 allocation-failure 穷举和语义失败
 测试验证成功转移与失败清理。若 Writer 后端增加非内存故障，或修改所有权
 转移约定，必须重新审查错误转换。
+
+## 完整文件的原子交付与固定退出码
+
+适用范围：已有父目录内，用完整的新内容替换一个文件；不保证父目录元数据
+断电持久化，不适用于跨文件事务。验证基线：Zig
+`0.17.0-dev.2326+f94185e67`，源码 revision
+`f94185e67749c9cfcf21be5cf9c03baf8d2ac025`。
+
+- 使用父目录的 `createFileAtomic(io, basename, .{ .replace = true })`，
+  立即 `defer atomic.deinit(io)`；成功 replace 后同样必须 deinit。
+- 先写 `atomic.file.writer`，再调用 **File.Writer.flush**：它会从抽象的
+  `WriteFailed` 取回底层具体错误。需要同步文件数据时在 replace 前调用
+  `atomic.file.sync(io)`。最后 `atomic.replace(io)` 才改变目标。
+- Atomic.deinit 会关闭句柄并尝试删除未提交的临时文件；其删除失败不会向上传播，
+  因而不能把这项机制描述为文件系统故障下绝对的清理保证。
+- 应用已经处理并输出诊断时，可让 `main(std.process.Init)` 返回 `u8`。
+  `start.wrapMain` 对未处理的 error union 默认打印错误和 debug 调用栈；
+  返回退出码可避免重复诊断，也让正常 defer 完成资源清理。
+
+源码依据：`lib/std/Io/Dir.zig` 的 `createFileAtomic`、`copyFile`，
+`lib/std/Io/File/Atomic.zig` 的 `replace`/`deinit`，
+`lib/std/Io/File/Writer.zig` 的 `flush`，`lib/std/fs/test.zig` 的 AtomicFile
+测试，以及 `lib/std/start.zig` 的 `wrapMain`。
+本仓库 `src/output.zig` 的真实临时目录与 Io vtable 故障注入测试覆盖 flush、
+sync、rename、取消后的旧文件和清理状态；`tests/application_cli.zig` 验证
+退出码、诊断和可执行文件交付。更换 Zig 的 Atomic 或 Writer 实现、目标平台
+或文件系统时应重新验证。

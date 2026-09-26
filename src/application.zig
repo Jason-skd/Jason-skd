@@ -69,7 +69,15 @@ test "fixture pipeline renders all sections offline and maps required data failu
         .config_path = "tests/fixtures/application/profile.yaml",
         .fixtures_path = "tests/fixtures/application/success",
     };
-    const page = try generate(gpa, std.testing.io, &env, options, 0);
+    var vtable = std.testing.io.vtable.*;
+    vtable.processSpawn = std.Io.failing.vtable.processSpawn;
+    vtable.processSpawnPath = std.Io.failing.vtable.processSpawnPath;
+    vtable.netConnectIp = std.Io.failing.vtable.netConnectIp;
+    vtable.netConnectUnix = std.Io.failing.vtable.netConnectUnix;
+    vtable.netLookup = std.Io.failing.vtable.netLookup;
+    var offline_io = std.testing.io;
+    offline_io.vtable = &vtable;
+    const page = try generate(gpa, offline_io, &env, options, 0);
     defer gpa.free(page);
     for ([_][]const u8{ "AUTO-GENERATED", "Activity Window", "Languages", "Octavia Labs", "Fixture metadata", "Building" }) |marker| {
         try std.testing.expect(std.mem.indexOf(u8, page, marker) != null);
@@ -87,4 +95,49 @@ test "fixture pipeline renders all sections offline and maps required data failu
     try std.testing.expectError(error.MissingCredential, generate(gpa, std.testing.io, &env, changed, 1800000000));
     changed.config_path = "tests/fixtures/config/invalid_missing_login.yaml";
     try std.testing.expectError(error.Configuration, generate(gpa, std.testing.io, &env, changed, 1800000000));
+}
+
+test "optional metadata and organization obey enabled section requirements" {
+    const gpa = std.testing.allocator;
+    const loaded = try fixture.load(gpa, std.testing.io, "tests/fixtures/application/success");
+    defer loaded.deinit();
+    const yaml = try std.Io.Dir.cwd().readFileAlloc(std.testing.io, "tests/fixtures/application/profile.yaml", gpa, .limited(10000));
+    defer gpa.free(yaml);
+    var diagnostic: config.Diagnostic = .{};
+    var parsed = try config.parse(gpa, yaml, &diagnostic);
+    defer parsed.deinit();
+    var data = loaded.value.data.?;
+    data.organization = null;
+    try std.testing.expectError(error.Payload, renderData(gpa, &parsed.value, data, loaded.value.now_utc));
+    parsed.value.org_card.enabled = false;
+    data.repository_metadata = &.{};
+    const page = try renderData(gpa, &parsed.value, data, loaded.value.now_utc);
+    defer gpa.free(page);
+    try std.testing.expect(std.mem.indexOf(u8, page, "Offline project") != null);
+    data.activity.repositories = &.{};
+    parsed.value.sections = &.{ .stats, .recent_project };
+    const empty = try renderData(gpa, &parsed.value, data, loaded.value.now_utc);
+    defer gpa.free(empty);
+    try std.testing.expect(std.mem.indexOf(u8, empty, "AUTO-GENERATED") != null);
+}
+
+fn allocationScenario(gpa: std.mem.Allocator) !void {
+    var env: std.process.Environ.Map = .init(gpa);
+    defer env.deinit();
+    const page = try generate(gpa, std.testing.io, &env, .{
+        .config_path = "tests/fixtures/application/profile.yaml",
+        .fixtures_path = "tests/fixtures/application/success",
+    }, 0);
+    defer gpa.free(page);
+}
+
+test "fixture pipeline releases allocations at every failed allocation" {
+    // In-place remapping by the backing allocator can vary between iterations.
+    // Force allocate/copy growth so the failure sweep has a stable sequence.
+    var vtable = std.testing.allocator.vtable.*;
+    vtable.resize = std.mem.Allocator.noResize;
+    vtable.remap = std.mem.Allocator.noRemap;
+    var backing = std.testing.allocator;
+    backing.vtable = &vtable;
+    try std.testing.checkAllAllocationFailures(backing, allocationScenario, .{});
 }

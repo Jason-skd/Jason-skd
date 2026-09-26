@@ -15,9 +15,56 @@ pub const render_page = @import("render_page.zig");
 pub const application = @import("application.zig");
 pub const output = @import("output.zig");
 
-/// Application entry point reserved for process orchestration.
-pub fn run(init: std.process.Init) !void {
-    _ = init;
+/// Converts structured failures to bounded diagnostics at the process boundary.
+pub fn run(init: std.process.Init) u8 {
+    const now_utc = std.Io.Timestamp.now(init.io, .real).toSeconds();
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
+    var stderr_buffer: [256]u8 = undefined;
+    var stderr = std.Io.File.stderr().writer(init.io, &stderr_buffer);
+    const args = init.minimal.args.toSlice(init.arena.allocator()) catch {
+        report(&stderr, "arguments", "OutOfMemory");
+        return 1;
+    };
+    var diagnostic: cli.Diagnostic = .{};
+    const command = cli.parse(init.gpa, args[1..], init.environ_map, &diagnostic) catch |err| {
+        if (err == error.OutOfMemory) {
+            report(&stderr, "arguments", "OutOfMemory");
+            return 1;
+        }
+        // clap's detailed diagnostic echoes argv; argv can contain credentials.
+        report(&stderr, "arguments", "InvalidArguments");
+        return 2;
+    };
+    switch (command) {
+        .help => {
+            cli.writeHelp(&stdout.interface) catch {
+                report(&stderr, "output", "WriteFailed");
+                return 1;
+            };
+            stdout.flush() catch {
+                report(&stderr, "output", "WriteFailed");
+                return 1;
+            };
+        },
+        .run => |options| {
+            const markdown = application.generate(init.gpa, init.io, init.environ_map, options, now_utc) catch |err| {
+                report(&stderr, "application", @errorName(err));
+                return 1;
+            };
+            defer init.gpa.free(markdown);
+            output.deliver(init.io, options.output_path orelse "README.md", markdown, options.dry_run, &stdout.interface) catch {
+                report(&stderr, "output", "DeliveryFailed");
+                return 1;
+            };
+        },
+    }
+    return 0;
+}
+
+fn report(stderr: *std.Io.File.Writer, category: []const u8, cause: []const u8) void {
+    stderr.interface.print("profile-generator: {s}: {s}\n", .{ category, cause }) catch return;
+    stderr.flush() catch {};
 }
 
 test {

@@ -38,7 +38,8 @@ pub const StatsPayload = struct {
 pub const LanguagePayload = struct {
     name: []const u8,
     weight: u64,
-    percentage: u8,
+    /// Tenths of a percentage point, copied without rounding from statistics.
+    percentage_tenths: u16,
 };
 
 pub const OrganizationPayload = struct {
@@ -167,7 +168,7 @@ fn buildLanguages(gpa: Allocator, source: *const language_stats.Result) Allocato
         destination.* = .{
             .name = try gpa.dupe(u8, entry.name),
             .weight = entry.weight,
-            .percentage = entry.percentage,
+            .percentage_tenths = entry.percentage_tenths,
         };
     }
     return result;

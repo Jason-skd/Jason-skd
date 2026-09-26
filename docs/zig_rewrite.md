@@ -235,6 +235,10 @@ MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存�
 
 ### `components` 与 `assemble`
 
+语言统计与渲染 payload 使用 `percentage_tenths: u16` 表示十分之一百分点
+（352 即 35.2%）。保留 Top N 截取后归一化的口径，最大余数法分配 1000
+个单位，非空结果合计 100.0%；组件固定展示一位小数，不重新计算占比。
+
 时间窗口由应用 pipeline 使用 `config.window_days` 统一确定，并用于 Git/GitHub
 采集及 payload 构建。生产配置为 365 天；不得采集较短窗口却标注较长范围。
 近期项目从昨天开始按 UTC+8 自然日选择，最大回溯天数使用该配置，不另设

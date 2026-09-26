@@ -55,7 +55,7 @@ test "build copies stats and language payloads and preserves public degradation"
     const profile = fixtureProfile(.public_only, &repositories, &.{}, .{ .calendar_total = 9, .active_days = 4, .commits = 5, .issues = 1, .pull_requests = 2, .reviews = 1, .repositories_created = 0, .viewer_inaccessible = 7 });
     const cfg = fixtureConfig(&.{.stats}, null, true, true);
     const activity = fixtureAggregate(&.{});
-    const entries = [_]language_stats.Entry{ .{ .name = "Zig", .weight = 10, .percentage = 67 }, .{ .name = "Go", .weight = 5, .percentage = 33 } };
+    const entries = [_]language_stats.Entry{ .{ .name = "Zig", .weight = 10, .percentage_tenths = 667 }, .{ .name = "Go", .weight = 5, .percentage_tenths = 333 } };
     const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &entries };
     var built = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
     defer built.deinit();
@@ -64,7 +64,7 @@ test "build copies stats and language payloads and preserves public degradation"
     try std.testing.expectEqual(@as(u64, 7), built.value.stats.private_contributions);
     try std.testing.expect(built.value.stats.degraded);
     try std.testing.expectEqualStrings("Zig", built.value.languages[0].name);
-    try std.testing.expectEqual(@as(u8, 67), built.value.languages[0].percentage);
+    try std.testing.expectEqual(@as(u16, 667), built.value.languages[0].percentage_tenths);
 }
 
 test "organization is required only for an enabled organization section" {
@@ -156,7 +156,7 @@ fn allocationFailureBuild(allocator: std.mem.Allocator) !void {
     const commits = [_]git_activity.Commit{commit(now - 24 * 60 * 60)};
     const repositories = [_]git_activity.Repository{repository("target/repo", &commits, .scanned)};
     const activity = fixtureAggregate(&repositories);
-    const entries = [_]language_stats.Entry{.{ .name = "Zig", .weight = 1, .percentage = 100 }};
+    const entries = [_]language_stats.Entry{.{ .name = "Zig", .weight = 1, .percentage_tenths = 1000 }};
     const languages = language_stats.Result{ .allocator = allocator, .entries = &entries };
     var built = try page_payload.build(allocator, baseInput(&cfg, &profile, &activity, &languages));
     defer built.deinit();

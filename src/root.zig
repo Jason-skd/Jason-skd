@@ -10,6 +10,7 @@ pub const language_catalog_snapshot = @import("language_catalog_snapshot.zig");
 pub const language_catalog = @import("language_catalog.zig");
 pub const language_stats = @import("language_stats.zig");
 pub const page_payload = @import("page_payload.zig");
+pub const render = @import("render.zig");
 
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {
@@ -29,4 +30,5 @@ test {
     _ = language_catalog;
     _ = language_stats;
     _ = page_payload;
+    _ = render;
 }

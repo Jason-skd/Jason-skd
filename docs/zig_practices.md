@@ -276,3 +276,20 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 关键源码：`../zig/lib/std/hash_map.zig` 的 `StringHashMapUnmanaged`、`put`、`deinit` 和 `getOrPut allocation failure` 测试；`../zig/lib/std/Build/Step/Options.zig` 的静态键 map 调用；`../zig/lib/std/array_list.zig` 的 `toOwnedSlice`、`deinit`；`../zig/lib/std/mem.zig` 的 `sort`；`../zig/lib/std/math.zig` 的 `add`。
 
 验证基线为 Zig `0.17.0-dev.2248+3f6a02acd`、源码 revision `3f6a02acdda41190eab7d57a9f037df9d4853631`。语言统计测试覆盖排序、百分比、大权重和 `checkAllAllocationFailures` 对完整聚合链的逐分配失败注入。工具链改变 map 键所有权、列表转移或排序语义，或聚合键不再具有静态生命周期时，必须重新检查这些结论。
+
+## 单个 URL 参数与 HTML 属性的转义边界
+
+适用范围：把外部文字嵌入 HTML 中的 URL 查询值。对原始单个值使用
+`std.Uri.Component{ .raw = value }.formatEscaped(writer)`；它按 unreserved
+规则编码字节，包括 UTF-8、`&`、`;`、`/` 和 `%`。不要用允许查询分隔符
+的整段 query formatter 代替单值编码。完整且已经编码的 URL 仅做 HTML
+属性转义，不能再次按单个参数编码；HTML 中参数之间的 `&` 写成 `&amp;`。
+
+证据：Zig `0.17.0-dev.2248+3f6a02acd`，revision
+`3f6a02acdda41190eab7d57a9f037df9d4853631`，官方
+`lib/std/Uri.zig` 的 `Component.formatEscaped`、`percentEncode`、
+`isUnreserved` 与 component formatter 测试。该源码在本任务中按锁定 revision
+导出到 `/private/tmp/jason-issue18-toolchain/source` 并核对发行包 std 源码。
+本仓库 `src/render_test.zig` 的保留字符、Unicode、查询分隔符和已编码 URL
+测试验证以上边界。若标准库的 URI formatter 或输出宿主的 HTML 规则改变，
+需重新核验。

@@ -367,3 +367,17 @@ MVP 不迁移这套缓存：
 - 通用模板引擎；
 - 更复杂的 Unicode 显示宽度估算；
 - Python 版中未被 MVP 页面实际使用的 Git 活动统计和降级路径。
+
+## 已实现的渲染边界（Issue #18）
+
+`src/render.zig` 提供六个独立的 Writer 渲染函数，仅借用对应配置、主题和
+已完成的 typed payload；不采集数据，也不执行网络、子进程或文件系统 I/O。
+语言占比按 `percentage_tenths` 展示一位小数，不在渲染层再次截取 Top-N 或重算比例。
+统计脚注与最近项目空状态均从 payload 获取实际窗口天数。
+
+组件 fixture 对照 `main` 的 Python golden，保留居中布局、图标、回退链接、
+悬停描述与英文文案。HTML 属性中的查询分隔符使用 `&amp;`，查询值中的空格
+使用 `%20`；这是转义表示变化，不改变 URL 或可见布局。统计脚注恢复生产
+口径 `Last N days · incl. X private contributions`。文字与属性均做 HTML
+转义，完整 URL 不重复百分号编码，单个查询值通过标准库 URI component 编码。
+组件自身传播 `WriteFailed`，调用者不能使用失败后 Writer 中残留的前缀。

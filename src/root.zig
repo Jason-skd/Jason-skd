@@ -12,6 +12,7 @@ pub const language_stats = @import("language_stats.zig");
 pub const page_payload = @import("page_payload.zig");
 pub const render = @import("render.zig");
 pub const render_page = @import("render_page.zig");
+pub const application = @import("application.zig");
 
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {
@@ -19,6 +20,8 @@ pub fn run(init: std.process.Init) !void {
 }
 
 test {
+    _ = application;
+    _ = @import("application_input.zig");
     _ = config;
     _ = cli;
     _ = @import("dependency_validation.zig");

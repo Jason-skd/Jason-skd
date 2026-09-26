@@ -1,0 +1,96 @@
+{
+  "now_utc": 1800000000,
+  "data": {
+    "profile": {
+      "login": "octavia-example",
+      "access": "authenticated_as_target",
+      "contributions": {
+        "calendar_total": 12,
+        "active_days": 3,
+        "commits": 8,
+        "issues": 1,
+        "pull_requests": 2,
+        "reviews": 1,
+        "repositories_created": 0,
+        "viewer_inaccessible": 0
+      },
+      "owned_repositories": [
+        {
+          "name": "atlas",
+          "name_with_owner": "octavia-example/atlas",
+          "description": "Offline project",
+          "is_private": false,
+          "stars": 7,
+          "primary_language": "Zig"
+        }
+      ],
+      "contributed_repositories": []
+    },
+    "organization": {
+      "login": "Octavia-Labs",
+      "display_name": "Octavia Labs",
+      "avatar_url": "https://example.test/avatar.png",
+      "html_url": "https://github.com/Octavia-Labs"
+    },
+    "repository_metadata": [
+      {
+        "name_with_owner": "octavia-example/atlas",
+        "description": "Fixture metadata",
+        "primary_language": "Zig"
+      }
+    ],
+    "activity": {
+      "repositories": [
+        {
+          "name": "octavia-example/atlas",
+          "location": "/must-not-be-opened",
+          "status": "scanned",
+          "failure": null,
+          "commits": [
+            {
+              "id": "abc",
+              "author_email": "maintainer@octavia.example",
+              "timestamp": 1799913600,
+              "changes": [
+                {
+                  "file": {
+                    "path": "src/main.zig",
+                    "additions": 12,
+                    "deletions": 3
+                  }
+                }
+              ]
+            }
+          ],
+          "commit_count": 1,
+          "text_additions": 12,
+          "text_deletions": 3,
+          "binary_files": 0,
+          "renamed_files": 0
+        },
+        {
+          "name": "Octavia-Labs/beacon",
+          "location": "/must-not-be-opened",
+          "status": "unavailable",
+          "failure": {
+            "kind": "git_command_failed",
+            "cause": "GitCommandFailed"
+          },
+          "commits": [],
+          "commit_count": 0,
+          "text_additions": 0,
+          "text_deletions": 0,
+          "binary_files": 0,
+          "renamed_files": 0
+        }
+      ],
+      "repository_count": 2,
+      "unavailable_count": 1,
+      "commit_count": 1,
+      "text_additions": 12,
+      "text_deletions": 3,
+      "binary_files": 0,
+      "renamed_files": 0
+    }
+  }
+}

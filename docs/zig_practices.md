@@ -293,3 +293,19 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 本仓库 `src/render_test.zig` 的保留字符、Unicode、查询分隔符和已编码 URL
 测试验证以上边界。若标准库的 URI formatter 或输出宿主的 HTML 规则改变，
 需重新核验。
+
+## 内存 Writer 的拥有型结果与错误转换
+
+适用范围：只向 `std.Io.Writer.Allocating` 写入的纯格式化/组装函数。
+初始化后立即 `defer output.deinit()`，全部写入成功才调用 `toOwnedSlice()`；
+它把 slice 所有权转给调用者，失败时仍由 defer 清理。该具体 Writer 的
+`drain` 将容量分配失败映射成 `WriteFailed`，所以拥有型 API 可把它恢复为
+`OutOfMemory`，同时保留业务错误。不能对任意 Writer 作同样推断。
+
+证据与版本：Zig `0.17.0-dev.2248+3f6a02acd`，revision
+`3f6a02acdda41190eab7d57a9f037df9d4853631`；官方
+`lib/std/Io/Writer.zig` 的 `Allocating.drain`、`deinit`、`toOwnedSlice`、
+`testAllocating`，以及 `lib/std/json/Stringify.zig` 的 `valueAlloc` 调用点。
+本仓库 `render_page_test.zig` 的完整页面 allocation-failure 穷举和语义失败
+测试验证成功转移与失败清理。若 Writer 后端增加非内存故障，或修改所有权
+转移约定，必须重新审查错误转换。

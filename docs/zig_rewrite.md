@@ -381,3 +381,20 @@ MVP 不迁移这套缓存：
 口径 `Last N days · incl. X private contributions`。文字与属性均做 HTML
 转义，完整 URL 不重复百分号编码，单个查询值通过标准库 URI component 编码。
 组件自身传播 `WriteFailed`，调用者不能使用失败后 Writer 中残留的前缀。
+
+`src/render_page.zig` 的 `assemble(allocator, config, page)` 返回调用者负责
+释放的完整 Markdown。它按 `sections` 顺序调用 renderer，跳过禁用的组织卡
+和最近项目；重复 section、无有效 section、缺失 payload、无内容和组件失败
+均返回错误。未知名称由配置解析拒绝，穷尽的 `Section` switch 保证每个合法
+名称都有 renderer。组装还检查启用的统计/最近项目窗口与配置一致。
+中间缓冲区在任何失败路径释放，成功后才转交完整页面；README 文件替换、
+数据源查询窗口和 CLI 接线仍由 Issue #16 的应用编排负责。
+
+验证包括六组件 golden、整页 golden、重排/禁用、错误传播、分配失败穷举，
+以及配置解析 → payload → 页面串联的 90 天/一位小数检查。整页 fixture
+来源于独立的组件期望与原模板结构，并非由待测渲染器生成。
+
+视觉验证范围：本地无界面 Chrome 对整页 golden 的浅色/深色 HTML 预览检查
+确认了主体布局、徽章、语言图标、组织卡、最近项目和页脚；打字 SVG 在静态
+截图中为空，动画播放和 GitHub 在线渲染效果尚未验证。外部 SVG 服务的加载
+不属于离线测试保证。

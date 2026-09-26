@@ -31,9 +31,7 @@ sections:
   - org_card
   - recent_project
 
-# 各节标题（v1.2 英文文案）——想改标题改这里；stats.header 的数字需与 window_days 保持一致
-stats:
-  header: "📊 Last 365 Days"
+# stats 标题默认根据 window_days 生成；需要自定义时才设置 stats.header。
 
 typing:
   lines:

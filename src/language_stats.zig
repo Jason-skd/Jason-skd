@@ -12,7 +12,8 @@ pub const Entry = struct {
     /// Name borrowed from the static language catalog.
     name: []const u8,
     weight: u64,
-    percentage: u8,
+    /// Tenths of a percentage point: 352 means 35.2%.
+    percentage_tenths: u16,
 };
 
 /// Owns the entry slice; entry names remain borrowed from the static catalog.
@@ -29,7 +30,7 @@ pub const Result = struct {
 ///
 /// Binary, zero-weight, unknown, and non-programming changes are excluded.
 /// A rename is classified using its current path. Percentages are calculated
-/// only over the retained entries and sum to 100 when the result is nonempty.
+/// only over the retained entries and sum to 100.0% when the result is nonempty.
 pub fn aggregate(allocator: Allocator, repositories: []const git_activity.Repository, top: usize) Error!Result {
     var totals: std.StringHashMapUnmanaged(u64) = .empty;
     defer totals.deinit(allocator);
@@ -57,7 +58,7 @@ pub fn aggregate(allocator: Allocator, repositories: []const git_activity.Reposi
         entries.appendAssumeCapacity(.{
             .name = item.key_ptr.*,
             .weight = item.value_ptr.*,
-            .percentage = 0,
+            .percentage_tenths = 0,
         });
     }
     std.mem.sort(Entry, entries.items, {}, lessEntry);
@@ -82,7 +83,7 @@ fn assignPercentages(allocator: Allocator, entries: []Entry) Allocator.Error!voi
     if (entries.len == 0) return;
 
     // The catalog has fewer than 1,000 languages, so the sum of their u64
-    // weights and each weight times 100 both fit in u128.
+    // weights and each weight times 1000 both fit in u128.
     var total: u128 = 0;
     for (entries) |entry| total += entry.weight;
     const remainders = try allocator.alloc(u128, entries.len);
@@ -90,20 +91,20 @@ fn assignPercentages(allocator: Allocator, entries: []Entry) Allocator.Error!voi
 
     var assigned: u16 = 0;
     for (entries, remainders) |*entry, *remainder| {
-        const scaled = @as(u128, entry.weight) * 100;
-        entry.percentage = @intCast(scaled / total);
+        const scaled = @as(u128, entry.weight) * 1000;
+        entry.percentage_tenths = @intCast(scaled / total);
         remainder.* = scaled % total;
-        assigned += entry.percentage;
+        assigned += entry.percentage_tenths;
     }
 
-    var left = 100 - assigned;
+    var left = 1000 - assigned;
     while (left > 0) : (left -= 1) {
         var best: ?usize = null;
         for (remainders, 0..) |remainder, index| {
             if (remainder == 0) continue;
             if (best == null or remainder > remainders[best.?]) best = index;
         }
-        entries[best.?].percentage += 1;
+        entries[best.?].percentage_tenths += 1;
         remainders[best.?] = 0;
     }
 }
@@ -154,9 +155,9 @@ test "aggregates additions and deletions across repositories and rename destinat
     try std.testing.expectEqual(@as(u64, 5), result.entries[1].weight);
     try std.testing.expectEqualStrings("C", result.entries[2].name);
     try std.testing.expectEqual(@as(u64, 1), result.entries[2].weight);
-    try std.testing.expectEqual(@as(u8, 60), result.entries[0].percentage);
-    try std.testing.expectEqual(@as(u8, 33), result.entries[1].percentage);
-    try std.testing.expectEqual(@as(u8, 7), result.entries[2].percentage);
+    try std.testing.expectEqual(@as(u16, 600), result.entries[0].percentage_tenths);
+    try std.testing.expectEqual(@as(u16, 333), result.entries[1].percentage_tenths);
+    try std.testing.expectEqual(@as(u16, 67), result.entries[2].percentage_tenths);
 }
 
 test "excludes binary, zero, unknown, and non-programming changes" {
@@ -179,7 +180,7 @@ test "excludes binary, zero, unknown, and non-programming changes" {
 
     try std.testing.expectEqual(@as(usize, 1), result.entries.len);
     try std.testing.expectEqualStrings("Python", result.entries[0].name);
-    try std.testing.expectEqual(@as(u8, 100), result.entries[0].percentage);
+    try std.testing.expectEqual(@as(u16, 1000), result.entries[0].percentage_tenths);
 }
 
 test "sorts equal weights by name and assigns tied remainders in that order" {
@@ -196,9 +197,9 @@ test "sorts equal weights by name and assigns tied remainders in that order" {
     try std.testing.expectEqualStrings("C", result.entries[0].name);
     try std.testing.expectEqualStrings("Python", result.entries[1].name);
     try std.testing.expectEqualStrings("Zig", result.entries[2].name);
-    try std.testing.expectEqual(@as(u8, 34), result.entries[0].percentage);
-    try std.testing.expectEqual(@as(u8, 33), result.entries[1].percentage);
-    try std.testing.expectEqual(@as(u8, 33), result.entries[2].percentage);
+    try std.testing.expectEqual(@as(u16, 334), result.entries[0].percentage_tenths);
+    try std.testing.expectEqual(@as(u16, 333), result.entries[1].percentage_tenths);
+    try std.testing.expectEqual(@as(u16, 333), result.entries[2].percentage_tenths);
 }
 
 test "top is applied before percentages and zero top is empty" {
@@ -212,8 +213,8 @@ test "top is applied before percentages and zero top is empty" {
     const result = try aggregate(std.testing.allocator, &repositories, 2);
     defer result.deinit();
     try std.testing.expectEqual(@as(usize, 2), result.entries.len);
-    try std.testing.expectEqual(@as(u8, 60), result.entries[0].percentage);
-    try std.testing.expectEqual(@as(u8, 40), result.entries[1].percentage);
+    try std.testing.expectEqual(@as(u16, 600), result.entries[0].percentage_tenths);
+    try std.testing.expectEqual(@as(u16, 400), result.entries[1].percentage_tenths);
 
     const empty = try aggregate(std.testing.allocator, &repositories, 0);
     defer empty.deinit();
@@ -234,8 +235,8 @@ test "empty input has no percentages and wide totals stay exact" {
     const repositories = [_]git_activity.Repository{fixtureRepository(&commits)};
     const result = try aggregate(std.testing.allocator, &repositories, 2);
     defer result.deinit();
-    try std.testing.expectEqual(@as(u8, 50), result.entries[0].percentage);
-    try std.testing.expectEqual(@as(u8, 50), result.entries[1].percentage);
+    try std.testing.expectEqual(@as(u16, 500), result.entries[0].percentage_tenths);
+    try std.testing.expectEqual(@as(u16, 500), result.entries[1].percentage_tenths);
 }
 
 test "weight additions and language totals report overflow" {
@@ -254,6 +255,29 @@ test "weight additions and language totals report overflow" {
     const second_commits = [_]git_activity.Commit{fixtureCommit(&overflowing_total)};
     const second_repositories = [_]git_activity.Repository{fixtureRepository(&second_commits)};
     try std.testing.expectError(error.WeightOverflow, aggregate(std.testing.allocator, &second_repositories, 1));
+}
+
+test "tenths preserve fractional and tiny shares with a total of 1000" {
+    const cases = [_]struct { first: u64, second: u64, expected: [2]u16 }{
+        .{ .first = 2, .second = 1, .expected = .{ 667, 333 } },
+        .{ .first = 999, .second = 1, .expected = .{ 999, 1 } },
+        .{ .first = 10000, .second = 1, .expected = .{ 1000, 0 } },
+    };
+    for (cases) |case| {
+        const changes = [_]git_activity.FileChange{
+            .{ .file = .{ .path = "src/a.zig", .additions = case.first, .deletions = 0 } },
+            .{ .file = .{ .path = "src/b.py", .additions = case.second, .deletions = 0 } },
+        };
+        const commits = [_]git_activity.Commit{fixtureCommit(&changes)};
+        const repositories = [_]git_activity.Repository{fixtureRepository(&commits)};
+        const result = try aggregate(std.testing.allocator, &repositories, 2);
+        defer result.deinit();
+        try std.testing.expectEqual(case.expected[0], result.entries[0].percentage_tenths);
+        try std.testing.expectEqual(case.expected[1], result.entries[1].percentage_tenths);
+        var total: u16 = 0;
+        for (result.entries) |entry| total += entry.percentage_tenths;
+        try std.testing.expectEqual(@as(u16, 1000), total);
+    }
 }
 
 fn allocationFailureAggregate(allocator: Allocator) !void {

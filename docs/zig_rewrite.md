@@ -235,6 +235,17 @@ MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存�
 
 ### `components` 与 `assemble`
 
+语言统计与渲染 payload 使用 `percentage_tenths: u16` 表示十分之一百分点
+（352 即 35.2%）。保留 Top N 截取后归一化的口径，最大余数法分配 1000
+个单位，非空结果合计 100.0%；组件固定展示一位小数，不重新计算占比。
+
+时间窗口由应用 pipeline 使用 `config.window_days` 统一确定，并用于 Git/GitHub
+采集及 payload 构建。生产配置为 365 天；不得采集较短窗口却标注较长范围。
+近期项目从昨天开始按 UTC+8 自然日选择，最大回溯天数使用该配置，不另设
+60 天上限。stats 与 recent-project payload 均携带窗口天数；无项目时也保留
+该字段，供组件生成 `No commits to show in the last N days`。窗口不从最早
+提交日期反推。stats 默认标题随窗口变化，显式自定义标题保持原样。
+
 - 每个 section 使用标准库 Writer 输出 Markdown/HTML；
 - component 只接收自己的配置切片和数据类型；
 - `assemble` 负责顺序、启用状态、非空校验和 section 间分隔；
@@ -356,3 +367,34 @@ MVP 不迁移这套缓存：
 - 通用模板引擎；
 - 更复杂的 Unicode 显示宽度估算；
 - Python 版中未被 MVP 页面实际使用的 Git 活动统计和降级路径。
+
+## 已实现的渲染边界（Issue #18）
+
+`src/render.zig` 提供六个独立的 Writer 渲染函数，仅借用对应配置、主题和
+已完成的 typed payload；不采集数据，也不执行网络、子进程或文件系统 I/O。
+语言占比按 `percentage_tenths` 展示一位小数，不在渲染层再次截取 Top-N 或重算比例。
+统计脚注与最近项目空状态均从 payload 获取实际窗口天数。
+
+组件 fixture 对照 `main` 的 Python golden，保留居中布局、图标、回退链接、
+悬停描述与英文文案。HTML 属性中的查询分隔符使用 `&amp;`，查询值中的空格
+使用 `%20`；这是转义表示变化，不改变 URL 或可见布局。统计脚注恢复生产
+口径 `Last N days · incl. X private contributions`。文字与属性均做 HTML
+转义，完整 URL 不重复百分号编码，单个查询值通过标准库 URI component 编码。
+组件自身传播 `WriteFailed`，调用者不能使用失败后 Writer 中残留的前缀。
+
+`src/render_page.zig` 的 `assemble(allocator, config, page)` 返回调用者负责
+释放的完整 Markdown。它按 `sections` 顺序调用 renderer，跳过禁用的组织卡
+和最近项目；重复 section、无有效 section、缺失 payload、无内容和组件失败
+均返回错误。未知名称由配置解析拒绝，穷尽的 `Section` switch 保证每个合法
+名称都有 renderer。组装还检查启用的统计/最近项目窗口与配置一致。
+中间缓冲区在任何失败路径释放，成功后才转交完整页面；README 文件替换、
+数据源查询窗口和 CLI 接线仍由 Issue #16 的应用编排负责。
+
+验证包括六组件 golden、整页 golden、重排/禁用、错误传播、分配失败穷举，
+以及配置解析 → payload → 页面串联的 90 天/一位小数检查。整页 fixture
+来源于独立的组件期望与原模板结构，并非由待测渲染器生成。
+
+视觉验证范围：本地无界面 Chrome 对整页 golden 的浅色/深色 HTML 预览检查
+确认了主体布局、徽章、语言图标、组织卡、最近项目和页脚；打字 SVG 在静态
+截图中为空，动画播放和 GitHub 在线渲染效果尚未验证。外部 SVG 服务的加载
+不属于离线测试保证。

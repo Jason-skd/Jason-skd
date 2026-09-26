@@ -14,6 +14,7 @@ pub const Error = Allocator.Error || error{
     RepositoryIdentityConflict,
     NumericOverflow,
     InvalidRecentProjectInput,
+    InvalidWindow,
 };
 
 pub const ContributionBreakdown = struct {
@@ -37,7 +38,8 @@ pub const StatsPayload = struct {
 pub const LanguagePayload = struct {
     name: []const u8,
     weight: u64,
-    percentage: u8,
+    /// Tenths of a percentage point, copied without rounding from statistics.
+    percentage_tenths: u16,
 };
 
 pub const OrganizationPayload = struct {
@@ -63,11 +65,17 @@ pub const RecentProject = union(enum) {
     project: RecentProjectPayload,
 };
 
+/// The queried window remains available even when no eligible project exists.
+pub const RecentProjectSection = struct {
+    window_days: u32,
+    selection: RecentProject,
+};
+
 pub const Page = struct {
     stats: StatsPayload,
     languages: []const LanguagePayload,
     organization: ?OrganizationPayload,
-    recent_project: RecentProject,
+    recent_project: RecentProjectSection,
 };
 
 pub const OwnedPage = struct {
@@ -82,6 +90,8 @@ pub const OwnedPage = struct {
 };
 
 pub const BuildInput = struct {
+    /// The caller must use this configuration's window_days for source queries
+    /// as well as payload construction. It is not inferred from commit dates.
     config: *const config.Config,
     profile: *const github_workflow.Profile,
     organization: ?*const github_workflow.Organization,
@@ -107,6 +117,7 @@ const Candidate = struct {
 };
 
 pub fn build(allocator: Allocator, input: BuildInput) Error!OwnedPage {
+    if (input.config.window_days == 0) return error.InvalidWindow;
     const arena = try allocator.create(std.heap.ArenaAllocator);
     arena.* = .init(allocator);
     errdefer {
@@ -124,7 +135,7 @@ pub fn build(allocator: Allocator, input: BuildInput) Error!OwnedPage {
         .stats = stats,
         .languages = languages,
         .organization = organization,
-        .recent_project = recent_project,
+        .recent_project = .{ .window_days = input.config.window_days, .selection = recent_project },
     } };
 }
 
@@ -157,7 +168,7 @@ fn buildLanguages(gpa: Allocator, source: *const language_stats.Result) Allocato
         destination.* = .{
             .name = try gpa.dupe(u8, entry.name),
             .weight = entry.weight,
-            .percentage = entry.percentage,
+            .percentage_tenths = entry.percentage_tenths,
         };
     }
     return result;
@@ -233,7 +244,7 @@ fn buildRecentProject(gpa: Allocator, input: BuildInput) Error!RecentProject {
         for (input.activity.repositories[0..index]) |previous| {
             if (previous.status == .scanned and identityMatches(previous.name, identity)) return error.RepositoryIdentityConflict;
         }
-        const candidate = candidateForRepository(repository, now_day) catch return error.InvalidRecentProjectInput;
+        const candidate = candidateForRepository(repository, now_day, input.config.window_days) catch return error.InvalidRecentProjectInput;
         if (candidate == null) continue;
         if (best == null or betterCandidate(candidate.?, best.?)) best = candidate;
     }
@@ -265,14 +276,14 @@ fn buildRecentProject(gpa: Allocator, input: BuildInput) Error!RecentProject {
     } };
 }
 
-fn candidateForRepository(repository: git_activity.Repository, now_day: i64) Error!?Candidate {
+fn candidateForRepository(repository: git_activity.Repository, now_day: i64, window_days: u32) Error!?Candidate {
     var best_day: ?i64 = null;
     var count: usize = 0;
     var last_timestamp: i64 = std.math.minInt(i64);
     for (repository.commits) |commit| {
         const day = localDay(commit.timestamp) catch return error.InvalidRecentProjectInput;
         const age = std.math.sub(i64, now_day, day) catch return error.InvalidRecentProjectInput;
-        if (age < 1 or age > 60) continue;
+        if (age < 1 or age > window_days) continue;
         if (best_day == null or day > best_day.?) {
             best_day = day;
             count = 1;

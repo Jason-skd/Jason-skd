@@ -16,6 +16,8 @@ test "production profile parses through the public configuration API" {
     defer parsed.deinit();
 
     try std.testing.expectEqualStrings("Jason-skd", parsed.value.login);
+    try std.testing.expectEqual(@as(u32, 365), parsed.value.window_days);
+    try std.testing.expectEqualStrings("📊 Last 365 Days", parsed.value.stats.header);
     try std.testing.expectEqualStrings("wintor76111@gmail.com", parsed.value.author_emails[0]);
     try std.testing.expectEqualStrings("SCNUAutoPtr", parsed.value.org.login.?);
     try std.testing.expectEqualStrings("SCNUAutoPtr/go-ce-v3", parsed.value.org.repos.?[0]);

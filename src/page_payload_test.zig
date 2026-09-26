@@ -55,7 +55,7 @@ test "build copies stats and language payloads and preserves public degradation"
     const profile = fixtureProfile(.public_only, &repositories, &.{}, .{ .calendar_total = 9, .active_days = 4, .commits = 5, .issues = 1, .pull_requests = 2, .reviews = 1, .repositories_created = 0, .viewer_inaccessible = 7 });
     const cfg = fixtureConfig(&.{.stats}, null, true, true);
     const activity = fixtureAggregate(&.{});
-    const entries = [_]language_stats.Entry{ .{ .name = "Zig", .weight = 10, .percentage = 67 }, .{ .name = "Go", .weight = 5, .percentage = 33 } };
+    const entries = [_]language_stats.Entry{ .{ .name = "Zig", .weight = 10, .percentage_tenths = 667 }, .{ .name = "Go", .weight = 5, .percentage_tenths = 333 } };
     const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &entries };
     var built = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
     defer built.deinit();
@@ -64,7 +64,7 @@ test "build copies stats and language payloads and preserves public degradation"
     try std.testing.expectEqual(@as(u64, 7), built.value.stats.private_contributions);
     try std.testing.expect(built.value.stats.degraded);
     try std.testing.expectEqualStrings("Zig", built.value.languages[0].name);
-    try std.testing.expectEqual(@as(u8, 67), built.value.languages[0].percentage);
+    try std.testing.expectEqual(@as(u16, 667), built.value.languages[0].percentage_tenths);
 }
 
 test "organization is required only for an enabled organization section" {
@@ -93,7 +93,7 @@ test "recent project joins identities case insensitively and uses yesterday tier
     input.repository_metadata = &metadata;
     var built = try page_payload.build(std.testing.allocator, input);
     defer built.deinit();
-    switch (built.value.recent_project) {
+    switch (built.value.recent_project.selection) {
         .none => return error.TestUnexpectedResult,
         .project => |project| {
             try std.testing.expectEqualStrings("target/repo", project.identity);
@@ -115,7 +115,8 @@ test "recent project excludes external and unavailable repositories" {
     const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
     var built = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
     defer built.deinit();
-    try std.testing.expect(built.value.recent_project == .none);
+    try std.testing.expect(built.value.recent_project.selection == .none);
+    try std.testing.expectEqual(@as(u32, 30), built.value.recent_project.window_days);
 }
 
 test "stars overflow, malformed identity, and metadata conflict are structured errors" {
@@ -155,10 +156,64 @@ fn allocationFailureBuild(allocator: std.mem.Allocator) !void {
     const commits = [_]git_activity.Commit{commit(now - 24 * 60 * 60)};
     const repositories = [_]git_activity.Repository{repository("target/repo", &commits, .scanned)};
     const activity = fixtureAggregate(&repositories);
-    const entries = [_]language_stats.Entry{.{ .name = "Zig", .weight = 1, .percentage = 100 }};
+    const entries = [_]language_stats.Entry{.{ .name = "Zig", .weight = 1, .percentage_tenths = 1000 }};
     const languages = language_stats.Result{ .allocator = allocator, .entries = &entries };
     var built = try page_payload.build(allocator, baseInput(&cfg, &profile, &activity, &languages));
     defer built.deinit();
+}
+
+test "recent selection uses the configured window and preserves it in empty payloads" {
+    const owned = [_]github_workflow.Repository{.{ .name = "repo", .name_with_owner = "target/repo", .description = null, .is_private = false, .stars = 0, .primary_language = null }};
+    const profile = fixtureProfile(.authenticated_as_target, &owned, &.{}, empty_contributions);
+    const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
+    const cases = [_]struct { days: u32, age: i64, selected: bool }{
+        .{ .days = 365, .age = 60, .selected = true },
+        .{ .days = 365, .age = 61, .selected = true },
+        .{ .days = 365, .age = 365, .selected = true },
+        .{ .days = 365, .age = 366, .selected = false },
+        .{ .days = 30, .age = 30, .selected = true },
+        .{ .days = 30, .age = 31, .selected = false },
+        .{ .days = 365, .age = 0, .selected = false },
+        .{ .days = 365, .age = -1, .selected = false },
+    };
+    for (cases) |case| {
+        var cfg = fixtureConfig(&.{.recent_project}, null, true, true);
+        cfg.window_days = case.days;
+        const commits = [_]git_activity.Commit{commit(now - case.age * 86400)};
+        const repositories = [_]git_activity.Repository{repository("target/repo", &commits, .scanned)};
+        const activity = fixtureAggregate(&repositories);
+        var built = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
+        defer built.deinit();
+        try std.testing.expectEqual(case.selected, built.value.recent_project.selection == .project);
+        try std.testing.expectEqual(case.days, built.value.recent_project.window_days);
+        try std.testing.expectEqual(case.days, built.value.stats.window_days);
+    }
+}
+
+test "recent selection uses UTC plus eight midnight and excludes today's commits" {
+    const midnight = @divFloor(now + 8 * 3600, 86400) * 86400 - 8 * 3600;
+    const owned = [_]github_workflow.Repository{.{ .name = "repo", .name_with_owner = "target/repo", .description = null, .is_private = false, .stars = 0, .primary_language = null }};
+    const profile = fixtureProfile(.authenticated_as_target, &owned, &.{}, empty_contributions);
+    const cfg = fixtureConfig(&.{.recent_project}, null, true, true);
+    const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
+    const commits = [_]git_activity.Commit{ commit(midnight - 1), commit(midnight), commit(midnight + 1) };
+    const repositories = [_]git_activity.Repository{repository("target/repo", &commits, .scanned)};
+    const activity = fixtureAggregate(&repositories);
+    var input = baseInput(&cfg, &profile, &activity, &languages);
+    input.now_utc = midnight;
+    var built = try page_payload.build(std.testing.allocator, input);
+    defer built.deinit();
+    try std.testing.expectEqual(@as(usize, 1), built.value.recent_project.selection.project.commit_count);
+    try std.testing.expectEqual(page_payload.RecentProjectTier.yesterday, built.value.recent_project.selection.project.tier);
+}
+
+test "zero collection window is rejected even without recent projects" {
+    var cfg = fixtureConfig(&.{.stats}, null, true, true);
+    cfg.window_days = 0;
+    const profile = fixtureProfile(.authenticated_as_target, &.{}, &.{}, empty_contributions);
+    const activity = fixtureAggregate(&.{});
+    const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
+    try std.testing.expectError(error.InvalidWindow, page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages)));
 }
 
 test "complete page payload construction releases allocation failures" {

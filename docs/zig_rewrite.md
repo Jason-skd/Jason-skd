@@ -398,3 +398,60 @@ MVP 不迁移这套缓存：
 确认了主体布局、徽章、语言图标、组织卡、最近项目和页脚；打字 SVG 在静态
 截图中为空，动画播放和 GitHub 在线渲染效果尚未验证。外部 SVG 服务的加载
 不属于离线测试保证。
+
+## 已实现：Issue #16 应用流水线与输出
+
+`src/root.zig` 解析 CLI，并在最终边界输出固定类别诊断和退出码：
+成功（含 help）为 0，应用或输出失败为 1，参数错误为 2。
+诊断不回显 argv、文件路径、HTTP 响应体或凭据。
+`src/main.zig` 只转交启动上下文和返回退出码。
+
+`application.generate` 读取配置，使用启动时唯一的 Unix 秒时间，按
+`[now_utc - window_days * 86400, now_utc]` 构造 GitHub/Git 的闭区间。
+生产 adapter 复用 GitHub workflow 和 Git activity，合并并去重自有、配置的
+组织仓库，以及启用 `include_external` 时的贡献仓库；外部贡献仓库查询上限为
+100。Git 命令超时为 120 秒，临时 clone 使用 `TMPDIR`（未设置时 `/tmp`）。
+应用继续调用语言统计、`page_payload.build` 和 `render_page.assemble`，所有
+section 成功后才交付输出。必需 Profile 或凭据失败会终止；单仓库活动失败
+保留为结构化 unavailable 结果。缺失组织仅在启用 org_card 时使 payload
+失败；可选仓库 metadata 缺失允许使用已有 Profile metadata 或空值。
+
+入口传给 `output.deliver` 的默认目标是 `README.md`，`--output` 可以覆盖。
+`--dry-run` 把完整页面写到 stdout，不打开目标文件。
+正常模式在目标父目录创建 atomic 临时文件，完成 Writer flush 和 File sync
+后调用 Atomic.replace；defer 在失败、取消和成功路径释放临时资源。
+父目录必须已经存在，目标必须为文件路径。该行为提供完整文件的原子可见性，
+未增加父目录 fsync 或跨平台断电恢复协议；清理受文件系统可用性约束。
+
+### 当前 Zig fixture 契约
+
+`--fixtures DIR` 读取 `DIR/data.json`（上限 16 MiB）；配置仍由 `--config`
+指定（上限 1 MiB）。这是 typed source-domain snapshot，不兼容旧 Python
+最终渲染数据目录。结构定义在 `application_fixture.Snapshot` 和
+`application_input.Data`：
+
+- `now_utc`：固定 Unix 秒，覆盖生产启动时间；必须足以形成配置时间窗口；
+- `data`：包含 `github_workflow.Profile`、可选 Organization、RepositoryMetadata
+  列表和 `git_activity.Aggregate`；为 null 表示必需 Profile 获取失败；
+- activity 包含已按配置作者和上述时间区间过滤的 commit/file-change 数据；
+  计数与列表应一致，unavailable 仓库的 commits 必须为空；
+- JSON 严格匹配领域类型，拒绝未知字段；完整示例位于
+  `tests/fixtures/application/success/data.json`，六个 section 的配置位于相邻
+  `profile.yaml`。
+
+fixture 分支不初始化 HTTP client、不执行 Git、不访问 snapshot 中的仓库路径；
+仍执行语言统计、payload 和 render。`local-failure` 样例验证局部仓库失败仍可
+生成页面；`missing` 验证必需数据失败；`empty` 在启用 languages 时沿用
+`MissingLanguages` 渲染失败契约，未启用 languages 时允许空活动页面。
+
+```sh
+zig build run -- --config tests/fixtures/application/profile.yaml --fixtures tests/fixtures/application/success --dry-run
+zig build run -- --config tests/fixtures/application/profile.yaml --fixtures tests/fixtures/application/success --output /tmp/profile-preview.md
+zig build test-unit
+zig build test-cli
+zig build test
+```
+
+测试包含同目录替换、flush/sync/rename/取消故障注入、临时文件清理、旧内容
+保持、fixture 的网络/进程禁用、可选数据边界、分配失败清理，以及 CLI stdout、
+stderr、退出码和文件状态。生产 GitHub 服务未作为离线测试的依赖。

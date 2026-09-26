@@ -64,6 +64,23 @@ pub fn build(b: *std.Build) void {
         .root_module = app_module,
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
+    const unit_step = b.step("test-unit", "Run application and module unit tests");
+    unit_step.dependOn(&run_unit_tests.step);
+
+    const cli_test_options = b.addOptions();
+    cli_test_options.addOptionPath("executable", executable.getEmittedBin());
+    const cli_tests = b.addTest(.{
+        .name = "application-cli-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/application_cli.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "cli_test_options", .module = cli_test_options.createModule() }},
+        }),
+    });
+    const run_cli_tests = b.addRunArtifact(cli_tests);
+    const cli_step = b.step("test-cli", "Run offline application CLI tests");
+    cli_step.dependOn(&run_cli_tests.step);
 
     const integration_tests = b.addTest(.{
         .name = "config-integration-tests",
@@ -134,6 +151,7 @@ pub fn build(b: *std.Build) void {
     const run_language_catalog_tests = b.addRunArtifact(language_catalog_tests);
 
     const test_step = b.step("test", "Run all tests");
+    test_step.dependOn(&run_cli_tests.step);
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_integration_tests.step);
     test_step.dependOn(&run_git_activity_integration_tests.step);

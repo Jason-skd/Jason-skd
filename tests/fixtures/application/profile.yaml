@@ -1,0 +1,60 @@
+login: octavia-example
+timezone: Asia/Shanghai
+theme:
+  base: "112233"
+  accent: "#AABBCC"
+  cyan: "DDEEFF"
+author_emails:
+  - maintainer@octavia.example
+  - commits@octavia.example
+org:
+  login: Octavia-Labs
+  repos:
+    - Octavia-Labs/atlas
+    - Octavia-Labs/beacon
+window_days: 90
+include_external: false
+sections:
+  - banner
+  - typing
+  - stats
+  - languages
+  - org_card
+  - recent_project
+stats:
+  header: Activity Window
+typing:
+  lines:
+    - Building dependable systems
+    - Learning in public
+  font: JetBrains Mono
+  size: 24
+  width: 720
+  height: 80
+  duration: 3500
+  pause: 900
+  background: 0D1117
+banner:
+  height: 240
+  instance: https://example.test/banner
+  text: Octavia Example
+  desc: Systems engineer
+  font_size: 40
+  font_align: 50
+  desc_size: 18
+  desc_align: 50
+languages:
+  header: Languages
+  top: 6
+  icon_height: 44
+  types:
+    - programming
+org_card:
+  enabled: true
+  header: Organization
+  logo_height: 88
+recent_project:
+  enabled: true
+  header: Recent Project
+  icon_height: 92
+  exclude_external: false

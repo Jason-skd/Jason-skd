@@ -13,6 +13,7 @@ pub const page_payload = @import("page_payload.zig");
 pub const render = @import("render.zig");
 pub const render_page = @import("render_page.zig");
 pub const application = @import("application.zig");
+pub const output = @import("output.zig");
 
 /// Application entry point reserved for process orchestration.
 pub fn run(init: std.process.Init) !void {
@@ -20,6 +21,7 @@ pub fn run(init: std.process.Init) !void {
 }
 
 test {
+    _ = output;
     _ = application;
     _ = @import("application_input.zig");
     _ = config;

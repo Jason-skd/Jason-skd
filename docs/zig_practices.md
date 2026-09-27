@@ -336,3 +336,23 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 sync、rename、取消后的旧文件和清理状态；`tests/application_cli.zig` 验证
 退出码、诊断和可执行文件交付。更换 Zig 的 Atomic 或 Writer 实现、目标平台
 或文件系统时应重新验证。
+
+## HTTP Authorization 的实际发送与重定向边界
+
+适用范围：Zig `0.17.0-dev.2326+f94185e67`（源码 revision
+`f94185e67749c9cfcf21be5cf9c03baf8d2ac025`）的 `std.http.Client`。
+该版本保存和校验 `privileged_headers`，但 `Request.sendHead` 不发送它们。
+显式 Bearer 凭据使用 `.headers.authorization = .{ .override = value }`，
+无凭据时使用 `.omit`，避免从 URI 隐式生成认证信息。
+
+该做法必须与 `.redirect_behavior = .unhandled` 配合；不能假设重定向时
+清空 `privileged_headers` 也会清空标准头 override。借用的凭据字符串必须
+存活到请求发送完成，且不得写入诊断。
+
+源码依据：`lib/std/http/Client.zig` 的 `Request.Headers.Value`、
+`Request.sendHead`、`Request.emitOverridableHeader` 和重定向处理；
+回环服务参考 `lib/std/http/test.zig` 的 HTTP server/client 测试，
+并使用 `lib/std/Io.zig` 的 `concurrent`、`Future.await`/`cancel` 完成清理。
+本仓库 `src/github/transport.zig` 的真实回环测试验证认证头恰好发送一次、
+无凭据时不发送、302 原样返回；测试在旧实现上失败、修复后通过。
+更换 Zig revision 或启用自动重定向时必须重新检查实际序列化与跨来源凭据行为。

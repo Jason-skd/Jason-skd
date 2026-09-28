@@ -17,7 +17,7 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-29-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1847-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-170-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-29-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1850-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-170-7aa2f7?style=for-the-badge" />
 </p>
 
 <p align="center"><sub>Last 365 days · incl. 1039 private contributions</sub></p>
@@ -43,7 +43,7 @@
 <h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/Jason-skd/Jason-skd"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="Jason-skd — Dynamic profile README — assembled daily by code, never hand-edited" /></a>
+  <a href="https://github.com/Jason-skd/Jason-skd"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="96" alt="Zig" title="Jason-skd — Dynamic profile README — assembled daily by code, never hand-edited" /></a>
   <br/><b>Jason-skd</b>
   <br/><sub>4 commits yesterday</sub>
 </p>

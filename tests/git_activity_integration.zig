@@ -34,6 +34,8 @@ test "existing repository aggregation is isolated from an unavailable repository
     try runGit(&environ, root, &.{ "git", "init", "-q", root });
     try runGit(&environ, root, &.{ "git", "config", "user.email", "owner@example.test" });
     try runGit(&environ, root, &.{ "git", "config", "user.name", "Owner" });
+    try environ.put("GIT_AUTHOR_DATE", "1700000000 +0000");
+    try environ.put("GIT_COMMITTER_DATE", "1700000000 +0000");
     const file_path = try std.fs.path.join(testing.allocator, &.{ root, "note.txt" });
     defer testing.allocator.free(file_path);
     var file = try std.Io.Dir.cwd().createFile(testing.io, file_path, .{});
@@ -50,8 +52,9 @@ test "existing repository aggregation is isolated from an unavailable repository
     var result = try activity.scan(testing.allocator, testing.io, &environ, .{
         .sources = &sources,
         .author_emails = &authors,
-        .since = 0,
-        .until = std.math.maxInt(i64),
+        // Use valid Git dates; @0 and an i64 maximum fall back to wall time.
+        .since = 1699999999,
+        .until = 1700000001,
         .timeout = .{ .duration = .{ .raw = .fromSeconds(10), .clock = .awake } },
     });
     defer result.deinit();

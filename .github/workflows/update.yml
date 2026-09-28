@@ -1,0 +1,72 @@
+name: update-profile
+
+on:
+  schedule:
+    - cron: "17 16 * * *"
+  workflow_dispatch:
+    inputs:
+      fixtures:
+        description: "Use deterministic offline profile fixtures"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/update.yml
+      - build.zig
+      - build.zig.zon
+      - profile.yaml
+      - src/**
+      - tests/**
+      - tools/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: profile-update-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.0-dev.2307+392b17125
+
+      - name: Check Zig version
+        run: test "$(zig version)" = "0.17.0-dev.2307+392b17125"
+
+      - name: Build
+        run: zig build
+
+      - name: Test
+        run: zig build test
+
+      - name: Generate README from fixtures
+        if: ${{ inputs.fixtures == true }}
+        run: zig-out/bin/profile-generator --config tests/fixtures/application/profile.yaml --fixtures tests/fixtures/application/success
+
+      - name: Generate README
+        if: ${{ inputs.fixtures != true }}
+        run: zig-out/bin/profile-generator
+        env:
+          PROFILE_PAT: ${{ secrets.PROFILE_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit and push generated README
+        run: |
+          set -euo pipefail
+          git add -- README.md
+          if git diff --cached --quiet -- README.md; then
+            echo "README already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(readme): auto update $(date -u +%F) [skip ci]"
+          git push

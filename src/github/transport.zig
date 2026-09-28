@@ -158,13 +158,17 @@ pub const Std = struct {
         var req = try self.client.request(request.method, uri, .{
             .redirect_behavior = .unhandled,
             .headers = .{
-                .authorization = .omit,
+                // This nightly emits the standard override, but not privileged_headers.
+                // Keep redirects unhandled so credentials cannot cross origins.
+                .authorization = if (header_counts.privileged == 0)
+                    .omit
+                else
+                    .{ .override = privileged_headers[0].value },
                 .user_agent = .omit,
                 .accept_encoding = .omit,
                 .content_type = .omit,
             },
             .extra_headers = extra_headers[0..header_counts.extra],
-            .privileged_headers = privileged_headers[0..header_counts.privileged],
         });
         defer req.deinit();
 
@@ -228,4 +232,60 @@ test "authorization is separated from redirect-safe headers" {
     try std.testing.expectEqualStrings("Accept", extra[0].name);
     try std.testing.expectEqual(@as(usize, 1), counts.privileged);
     try std.testing.expectEqualStrings("Authorization", privileged[0].name);
+}
+
+test "standard transport sends authorization on the wire and leaves redirects unhandled" {
+    const io = std.testing.io;
+    const allocator = std.testing.allocator;
+    const address = try std.Io.net.IpAddress.parse("127.0.0.1", 0);
+    const Fixture = struct {
+        fn serve(server: *std.Io.net.Server, expected_auth: ?[]const u8, status: std.http.Status) !void {
+            var stream = try server.accept(std.testing.io);
+            defer stream.close(std.testing.io);
+            var read_buffer: [4096]u8 = undefined;
+            var write_buffer: [4096]u8 = undefined;
+            var reader = stream.reader(std.testing.io, &read_buffer);
+            var writer = stream.writer(std.testing.io, &write_buffer);
+            var http_server = std.http.Server.init(&reader.interface, &writer.interface);
+            var request = try http_server.receiveHead();
+            var headers = request.iterateHeaders();
+            var auth_count: usize = 0;
+            var auth_matches = expected_auth == null;
+            while (headers.next()) |header| {
+                if (std.ascii.eqlIgnoreCase(header.name, "authorization")) {
+                    auth_count += 1;
+                    auth_matches = if (expected_auth) |value| std.mem.eql(u8, value, header.value) else false;
+                }
+            }
+            // Respond before asserting so a regression cannot leave the client waiting.
+            try request.respond("fixture", .{
+                .status = status,
+                .keep_alive = false,
+                .extra_headers = &.{.{ .name = "Location", .value = "http://127.0.0.1:0/must-not-follow" }},
+            });
+            try std.testing.expect(auth_matches);
+            try std.testing.expectEqual(@as(usize, if (expected_auth == null) 0 else 1), auth_count);
+        }
+    };
+
+    for ([_]std.http.Status{ .ok, .ok, .found }, [_]?[]const u8{ "Bearer fixture-token", null, "Bearer fixture-token" }) |status, authorization| {
+        var server = try address.listen(io, .{});
+        defer server.deinit(io);
+        var future = try io.concurrent(Fixture.serve, .{ &server, authorization, status });
+        defer future.cancel(io) catch {};
+        const url = try std.fmt.allocPrint(allocator, "http://127.0.0.1:{d}/", .{server.socket.address.getPort()});
+        defer allocator.free(url);
+        var transport = Std.init(allocator, io);
+        defer transport.deinit();
+        var response = try transport.send(.{
+            .method = .GET,
+            .url = url,
+            .payload = null,
+            .headers = if (authorization) |value| &.{.{ .name = "aUtHoRiZaTiOn", .value = value }} else &.{},
+        });
+        defer response.deinit();
+        try std.testing.expectEqual(status, response.status);
+        try std.testing.expectEqualStrings("fixture", response.body);
+        try future.await(io);
+    }
 }

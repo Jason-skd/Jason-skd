@@ -455,3 +455,43 @@ zig build test
 测试包含同目录替换、flush/sync/rename/取消故障注入、临时文件清理、旧内容
 保持、fixture 的网络/进程禁用、可选数据边界、分配失败清理，以及 CLI stdout、
 stderr、退出码和文件状态。生产 GitHub 服务未作为离线测试的依赖。
+
+## 已实现：Issue #12 Zig CI 入口
+
+`.github/workflows/update.yml` 使用 `mlugg/setup-zig@v2` 安装固定发行包
+`0.17.0-dev.2307+392b17125`，并显式检查 `zig version`。CI 使用可下载的
+0.17 nightly，不跟随浮动 `master`，也不在 runner 上从源码编译 Zig。
+`build.zig.zon` 的 minimum 仍表示最低版本，CI 的完整版本另由 workflow 锁定。
+
+执行顺序为 `zig build` → `zig build test` → 生成 → 提交。保留每日
+`17 16 * * *` UTC、手动 dispatch、main 源文件 push 和按 ref 串行运行；
+push paths 覆盖 workflow、构建与依赖 manifest、配置、src、tests、tools。
+任一步失败后，默认 success 条件阻止后续生成或提交步骤继续执行。
+
+手动运行勾选 `fixtures` 时使用 `tests/fixtures/application/profile.yaml`
+与 `tests/fixtures/application/success`，生成阶段不注入 secret、不访问
+外部数据；checkout、工具链安装和依赖下载仍需要网络。未勾选时使用根
+`profile.yaml`，仅真实生成步骤注入 `PROFILE_PAT` 与 `GITHUB_TOKEN`。
+不要增加回显环境变量、请求头或响应体的调试命令。
+
+两种模式都将 README 写到选择的 ref，并可能在该分支产生自动提交。
+提交阶段仅暂存 `README.md`；内容相同时成功退出，不创建空提交。
+内容变化时沿用 bot 身份与 `chore(readme): auto update YYYY-MM-DD [skip ci]`
+格式。fixture dispatch 应选择验收分支，以免将演示页面写到主页分支。
+Python 源码与依赖的清理仍属于 Issue #11。
+
+### 2026-09-27 验收记录
+
+- GitHub Actions run `36307821518`：固定 2307 编译器完成构建、测试和
+  fixture 生成；日志为 `README already up to date.`，分支 HEAD 保持
+  `3082e4c1f213fd21f08682b6775f8953ef593165`，未产生提交。
+- run `36307855918`：真实生成成功，banner、typing、stats、languages、
+  org_card、recent_project 均存在；bot 提交 `0f63722` 仅修改 README。
+  日志中两个 secret 均为掩码，未发现可识别的未掩码 GitHub token。
+- run `36304244821`：修复前生成失败，commit/push 步骤确实 skipped。
+  build/test 的失败门禁通过 workflow 顺序与默认 success 条件检查；
+  未向远端提交故意破坏构建或测试的代码。
+- 本地 2326 编译器：`zig build`、`zig build test --summary all`
+  （160/160）、修改源码的 `zig fmt --check` 和 `git diff --check` 通过；
+  `actionlint` 1.7.7 通过。认证回环回归在旧实现上失败，在修复后通过；
+  真实数据 dry-run 成功。

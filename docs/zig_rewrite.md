@@ -2,7 +2,8 @@
 
 > 定稿时间：2026-09-19
 >
-> 本文记录当前 Python 主页的功能边界、Zig 生态调查结论和 MVP 重写计划。
+> 本文前半部分记录迁移时 Python 主页的功能边界、Zig 生态调查结论和 MVP 范围。
+> 当前生产实现为 Zig；运行说明和文档索引由 `src/repository_notes.md` 嵌入生成的 README。
 > 后续实现以本文为范围依据；超出 MVP 的功能在出现真实需求后再讨论。
 
 ## 一、结论
@@ -30,7 +31,7 @@
 
 ## 二、现有主页的功能边界
 
-当前 Python 主页不是简单的“请求 GitHub 后拼 README”，而是由以下功能组成。
+迁移前的 Python 主页不是简单的“请求 GitHub 后拼 README”，而是由以下功能组成。
 
 ### CLI 与配置
 
@@ -350,7 +351,7 @@ MVP 不迁移这套缓存：
 - 生成失败不会留下半成品或泄露 token。
 - fixture/offline 测试不访问网络或真实仓库。
 - GitHub Actions 使用 Zig 构建并更新 README。
-- Python 运行时代码、Python 依赖和旧工作流在迁移完成后移除。
+- 生产分支不保留 Python 运行时代码、Python 依赖和旧工作流。
 - `zig build test` 和端到端 fixture 测试通过。
 - 模块结构符合本文边界，核心逻辑没有堆积在 `main.zig`。
 
@@ -375,7 +376,7 @@ MVP 不迁移这套缓存：
 语言占比按 `percentage_tenths` 展示一位小数，不在渲染层再次截取 Top-N 或重算比例。
 统计脚注与最近项目空状态均从 payload 获取实际窗口天数。
 
-组件 fixture 对照 `main` 的 Python golden，保留居中布局、图标、回退链接、
+组件 fixture 在迁移时对照旧 Python golden，保留居中布局、图标、回退链接、
 悬停描述与英文文案。HTML 属性中的查询分隔符使用 `&amp;`，查询值中的空格
 使用 `%20`；这是转义表示变化，不改变 URL 或可见布局。统计脚注恢复生产
 口径 `Last N days · incl. X private contributions`。文字与属性均做 HTML
@@ -464,7 +465,7 @@ stderr、退出码和文件状态。生产 GitHub 服务未作为离线测试的
 `build.zig.zon` 的 minimum 仍表示最低版本，CI 的完整版本另由 workflow 锁定。
 
 执行顺序为 `zig build` → `zig build test` → 生成 → 提交。保留每日
-`17 16 * * *` UTC、手动 dispatch、main 源文件 push 和按 ref 串行运行；
+`17 16 * * *` UTC、手动 dispatch、`refactor/zig` 源文件 push 和按 ref 串行运行；
 push paths 覆盖 workflow、构建与依赖 manifest、配置、src、tests、tools。
 任一步失败后，默认 success 条件阻止后续生成或提交步骤继续执行。
 
@@ -478,7 +479,10 @@ push paths 覆盖 workflow、构建与依赖 manifest、配置、src、tests、t
 提交阶段仅暂存 `README.md`；内容相同时成功退出，不创建空提交。
 内容变化时沿用 bot 身份与 `chore(readme): auto update YYYY-MM-DD [skip ci]`
 格式。fixture dispatch 应选择验收分支，以免将演示页面写到主页分支。
-Python 源码与依赖的清理仍属于 Issue #11。
+默认分支为 `refactor/zig`，它是唯一生产生成路径；`feat/python` 仅保留退役
+实现供历史查阅，不再用于生产生成。Zig 分支不含 Python 源码、依赖锁、
+解释器版本文件或 Python 调用。README 运行说明与文档索引来自
+`src/repository_notes.md`，每次生成都会保留；不要手工修改生成后的 README。
 
 ### 2026-09-27 验收记录
 

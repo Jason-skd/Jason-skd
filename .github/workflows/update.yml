@@ -10,7 +10,7 @@ on:
         type: boolean
         default: false
   push:
-    branches: [main]
+    branches: [refactor/zig]
     paths:
       - .github/workflows/update.yml
       - build.zig

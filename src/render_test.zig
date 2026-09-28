@@ -4,7 +4,7 @@ const config = @import("config.zig");
 const payload = @import("page_payload.zig");
 const Writer = std.Io.Writer;
 
-// Inputs mirror the independently maintained Python component fixtures.
+// Stable component inputs retained from the migration's visual baseline.
 pub const cfg: config.Config = .{
     .login = "Jason-skd",
     .timezone = .asia_shanghai,

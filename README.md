@@ -17,10 +17,10 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-29-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1768-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-169-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-29-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1847-7aa2f7?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-170-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>Last 365 days · incl. 1031 private contributions</sub></p>
+<p align="center"><sub>Last 365 days · incl. 1039 private contributions</sub></p>
 
 ---
 
@@ -45,9 +45,51 @@
 <p align="center">
   <a href="https://github.com/Jason-skd/Jason-skd"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="Jason-skd — Dynamic profile README — assembled daily by code, never hand-edited" /></a>
   <br/><b>Jason-skd</b>
-  <br/><sub>9 commits yesterday</sub>
+  <br/><sub>4 commits yesterday</sub>
 </p>
 
 <p align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&amp;color=0:1a1b26,100:7aa2f7&amp;height=120&amp;section=footer&amp;reversal=true" alt="footer" width="100%" />
 </p>
+
+<details>
+<summary>Generator & documentation</summary>
+
+### Generate this profile
+
+The sole production generator is Zig on the default branch `refactor/zig`.
+`feat/python` preserves the retired implementation for historical reference only.
+Edit `profile.yaml` for profile content; this README is generated in full.
+The instructions and index below come from `src/repository_notes.md`.
+
+Use the CI toolchain, Zig `0.17.0-dev.2307+392b17125`:
+
+```sh
+zig build
+zig build test
+zig build test-cli
+zig build run -- --config tests/fixtures/application/profile.yaml --fixtures tests/fixtures/application/success --dry-run
+```
+
+The fixture command runs without credentials or external data access after the
+compiler and locked dependencies are available. For real generation, provide
+`PROFILE_PAT` or `GITHUB_TOKEN` in the environment and run:
+
+```sh
+zig build run -- --config profile.yaml
+```
+
+GitHub Actions runs daily, on relevant pushes to `refactor/zig`, or by manual
+dispatch. Use a separate test branch for fixture dispatch because it writes
+demo data to that branch's README.
+
+### Documentation
+
+- [AI collaboration entry point](AGENTS.md)
+- [Task workflow](docs/governance/workflow.md)
+- [Engineering standards](docs/governance/engineering.md)
+- [Repository rules](docs/governance/repository.md)
+- [Zig implementation scope and workflow operation](docs/zig_rewrite.md)
+- [Verified Zig practices](docs/zig_practices.md)
+
+</details>

@@ -22,7 +22,7 @@ pub const cfg: config.Config = .{
     .recent_project = .{ .enabled = true, .header = "🚀 Recently Working On", .icon_height = 96, .exclude_external = true },
 };
 pub const page: payload.Page = .{
-    .stats = .{ .stars = 21, .contributions = 976, .active_days = 149, .window_days = 365, .private_contributions = 320, .degraded = false, .breakdown = .{ .commits = 538, .issues = 52, .pull_requests = 41, .reviews = 15, .repositories_created = 10 } },
+    .stats = .{ .stars = 21, .contributions = 976, .scanned_commits = 538, .active_days = 149, .window_days = 365, .private_contributions = 320, .degraded = false, .breakdown = .{ .commits = 538, .issues = 52, .pull_requests = 41, .reviews = 15, .repositories_created = 10 } },
     .languages = &.{
         .{ .name = "Python", .weight = 5230, .percentage_tenths = 352 },
         .{ .name = "TypeScript", .weight = 2980, .percentage_tenths = 201 },
@@ -41,7 +41,7 @@ fn golden(comptime name: []const u8, comptime function: anytype, args: anytype) 
     var buffer: [8192]u8 = undefined;
     var w = Writer.fixed(&buffer);
     try @call(.auto, function, .{&w} ++ args);
-    try std.testing.expectEqualStrings(@embedFile("render_fixtures/" ++ name ++ ".md"), w.buffered());
+    try std.testing.expectEqualStrings(std.mem.trimEnd(u8, @embedFile("render_fixtures/" ++ name ++ ".md"), "\n"), w.buffered());
     var small: [1]u8 = undefined;
     var failing = Writer.fixed(&small);
     try std.testing.expectError(error.WriteFailed, @call(.auto, function, .{&failing} ++ args));

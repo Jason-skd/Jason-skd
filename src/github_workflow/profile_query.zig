@@ -127,6 +127,20 @@ pub const ContributionRepositoryResponse = struct {
     repository: ContributedRepositoryResponse,
 };
 
+pub const CommitSearchItem = struct {
+    repository: struct {
+        full_name: []const u8,
+        private: bool,
+        owner: struct { login: []const u8 },
+    },
+};
+
+pub const CommitSearchResponse = struct {
+    total_count: u64,
+    incomplete_results: bool,
+    items: []const CommitSearchItem,
+};
+
 pub const ContributionsResponse = struct {
     totalCommitContributions: u64,
     totalIssueContributions: u64,
@@ -239,6 +253,25 @@ pub fn fetchRepositoryPage(
             }
         },
     };
+}
+
+pub fn fetchCommitSearch(
+    client: *github.Client,
+    allocator: Allocator,
+    login: []const u8,
+    from: *const [20]u8,
+    to: *const [20]u8,
+    page: u32,
+) Allocator.Error!github.Result(CommitSearchResponse) {
+    var encoded_login: std.Io.Writer.Allocating = .init(allocator);
+    defer encoded_login.deinit();
+    (std.Uri.Component{ .raw = login }).formatEscaped(&encoded_login.writer) catch return error.OutOfMemory;
+    const path = try allocator.print(
+        "/search/commits?q=author%3A{s}+author-date%3A{s}..{s}&per_page=100&page={d}",
+        .{ encoded_login.written(), from[0..10], to[0..10], page },
+    );
+    defer allocator.free(path);
+    return client.rest(CommitSearchResponse, path) catch |err| return escapingClientError(err);
 }
 
 pub fn formatDateTime(timestamp: i64) error{InvalidTimestamp}![20]u8 {

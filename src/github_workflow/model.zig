@@ -82,6 +82,7 @@ pub const InvalidResponse = enum {
     unexpected_login,
     invalid_repository_identity,
     malformed_pagination,
+    commit_search_incomplete,
 };
 
 /// Cause of a GitHub data-source failure.

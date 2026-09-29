@@ -424,8 +424,10 @@ MVP 不迁移这套缓存：
 `application.generate` 读取配置，使用启动时唯一的 Unix 秒时间，按
 `[now_utc - window_days * 86400, now_utc]` 构造 GitHub/Git 的闭区间。
 生产 adapter 复用 GitHub workflow 和 Git activity，合并并去重自有、配置的
-组织仓库，以及启用 `include_external` 时的贡献仓库；外部贡献仓库查询上限为
-100。Git 命令超时为 120 秒，临时 clone 使用 `TMPDIR`（未设置时 `/tmp`）。
+组织仓库，以及启用 `include_external` 时的贡献仓库。贡献仓库来源合并
+GraphQL 贡献集合与按作者、日期分段的 REST commit search，因此无需指定组织
+也能发现组织中的提交仓库；单日搜索结果超过 GitHub 1000 条上限时明确失败。
+Git 命令超时为 120 秒，临时 clone 使用 `TMPDIR`（未设置时 `/tmp`）。
 应用继续调用语言统计、`page_payload.build` 和 `render_page.assemble`，所有
 section 成功后才交付输出。必需 Profile 或凭据失败会终止；单仓库活动失败
 保留为结构化 unavailable 结果。缺失组织仅在启用 org_card 时使 payload

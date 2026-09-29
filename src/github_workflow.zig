@@ -1,6 +1,7 @@
 //! GitHub-backed data collection workflows for stable profile domain values.
 
 const metadata = @import("github_workflow/metadata.zig");
+const commit_search = @import("github_workflow/commit_search.zig");
 const model = @import("github_workflow/model.zig");
 const profile = @import("github_workflow/profile.zig");
 
@@ -27,4 +28,5 @@ test {
     _ = @import("github_workflow/model_test.zig");
     _ = profile;
     _ = metadata;
+    _ = commit_search;
 }

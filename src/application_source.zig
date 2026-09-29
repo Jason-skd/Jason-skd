@@ -6,6 +6,7 @@ const workflow = @import("github_workflow.zig");
 const git = @import("git_activity.zig");
 const input = @import("application_input.zig");
 const exclusions = @import("exclusions.zig");
+const commit_search = @import("github_workflow/commit_search.zig");
 
 /// All nested source arenas allocate from this arena and share its lifetime.
 pub const OwnedData = struct {
@@ -30,10 +31,28 @@ pub fn load(allocator: std.mem.Allocator, io: std.Io, environ: *const std.proces
         .until = window.until,
         .max_contributed_repositories = 100,
     });
-    const profile = switch (profile_result) {
+    var profile = switch (profile_result) {
         .success => |value| value.value,
         .failure => return error.RequiredGithubData,
     };
+    const discovered = try commit_search.discover(&client, gpa, cfg.login, window.since, window.until);
+    const search_repositories = switch (discovered) {
+        .success => |value| value,
+        .failure => return error.RequiredGithubData,
+    };
+    var contributed: std.ArrayList(workflow.ContributedRepository) = .empty;
+    try contributed.appendSlice(gpa, profile.contributed_repositories);
+    for (search_repositories) |repository| {
+        var present = false;
+        for (contributed.items) |existing| {
+            if (std.ascii.eqlIgnoreCase(existing.name_with_owner, repository.name_with_owner)) {
+                present = true;
+                break;
+            }
+        }
+        if (!present) try contributed.append(gpa, repository);
+    }
+    profile.contributed_repositories = contributed.items;
     var organization: ?workflow.Organization = null;
     if (cfg.org.login) |login| {
         const result = try workflow.fetchOrganization(&client, gpa, login);

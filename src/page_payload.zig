@@ -30,6 +30,7 @@ pub const ContributionBreakdown = struct {
 pub const StatsPayload = struct {
     stars: u64,
     contributions: u64,
+    scanned_commits: usize,
     active_days: u32,
     window_days: u32,
     breakdown: ContributionBreakdown,
@@ -128,7 +129,7 @@ pub fn build(allocator: Allocator, input: BuildInput) Error!OwnedPage {
     }
     const gpa = arena.allocator();
 
-    const stats = try buildStats(input.config, input.profile);
+    const stats = try buildStats(input.config, input.profile, input.activity);
     const languages = try buildLanguages(gpa, input.languages);
     const organization = try buildOrganization(gpa, input.config, input.organization);
     const recent_project = try buildRecentProject(gpa, input);
@@ -141,7 +142,7 @@ pub fn build(allocator: Allocator, input: BuildInput) Error!OwnedPage {
     } };
 }
 
-fn buildStats(cfg: *const config.Config, profile: *const github_workflow.Profile) Error!StatsPayload {
+fn buildStats(cfg: *const config.Config, profile: *const github_workflow.Profile, activity: *const git_activity.Aggregate) Error!StatsPayload {
     var stars: u64 = 0;
     for (profile.owned_repositories) |repository| {
         stars = std.math.add(u64, stars, repository.stars) catch return error.NumericOverflow;
@@ -150,6 +151,7 @@ fn buildStats(cfg: *const config.Config, profile: *const github_workflow.Profile
     return .{
         .stars = stars,
         .contributions = contributions.calendar_total,
+        .scanned_commits = activity.commit_count,
         .active_days = contributions.active_days,
         .window_days = cfg.window_days,
         .breakdown = .{
@@ -211,6 +213,12 @@ fn buildRecentProject(gpa: Allocator, input: BuildInput) Error!RecentProject {
     defer organizations.deinit(gpa);
     if (input.config.org.repos) |repositories| {
         for (repositories) |repository| try addIdentity(&organizations, gpa, repository);
+    }
+
+    if (input.config.org.login) |org_login| {
+        for (input.profile.contributed_repositories) |repository| {
+            if (std.ascii.eqlIgnoreCase(repository.owner_login, org_login)) try addIdentity(&organizations, gpa, repository.name_with_owner);
+        }
     }
 
     var external = std.ArrayList(Identity).empty;

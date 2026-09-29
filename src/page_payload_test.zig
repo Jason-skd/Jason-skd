@@ -119,6 +119,21 @@ test "recent project excludes external and unavailable repositories" {
     try std.testing.expectEqual(@as(u32, 30), built.value.recent_project.window_days);
 }
 
+test "discovered organization project is eligible and authored commits stay separate" {
+    const profile = fixtureProfile(.authenticated_as_target, &.{}, &.{.{ .name_with_owner = "org/go-ce-v4", .owner_login = "org", .is_private = false }}, .{ .calendar_total = 4, .active_days = 2, .commits = 1, .issues = 1, .pull_requests = 1, .reviews = 1, .repositories_created = 0, .viewer_inaccessible = 0 });
+    const cfg = fixtureConfig(&.{ .stats, .recent_project }, null, true, true);
+    const commits = [_]git_activity.Commit{commit(now - 86400)};
+    const repositories = [_]git_activity.Repository{repository("org/go-ce-v4", &commits, .scanned)};
+    var activity = fixtureAggregate(&repositories);
+    activity.commit_count = 7;
+    const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
+    var built = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
+    defer built.deinit();
+    try std.testing.expectEqual(@as(u64, 4), built.value.stats.contributions);
+    try std.testing.expectEqual(@as(usize, 7), built.value.stats.scanned_commits);
+    try std.testing.expectEqualStrings("org/go-ce-v4", built.value.recent_project.selection.project.identity);
+}
+
 test "stars overflow, malformed identity, and metadata conflict are structured errors" {
     const repositories = [_]github_workflow.Repository{
         .{ .name = "a", .name_with_owner = "target/a", .description = null, .is_private = false, .stars = std.math.maxInt(u64), .primary_language = null },

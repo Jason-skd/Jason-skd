@@ -42,6 +42,7 @@ pub fn stats(w: *Writer, cfg: *const config.StatsConfig, theme: *const config.Th
     try w.writeAll("<p align=\"center\">\n");
     try badge(w, "Stars", "stars", data.stars, theme.accent);
     try badge(w, "Contributions", "contributions", data.contributions, theme.accent);
+    try badge(w, "Authored commits", "authored commits", data.scanned_commits, theme.cyan);
     try badge(w, "Active days", "active days", data.active_days, theme.accent);
     try w.print("\n</p>\n\n<p align=\"center\"><sub>Last {d} days · incl. {d} private contributions", .{ data.window_days, data.private_contributions });
     if (data.degraded) try w.writeAll(" | ⚠️ public data only (no PAT)");

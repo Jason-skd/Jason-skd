@@ -5,6 +5,7 @@ const process = @import("process.zig");
 const lifecycle = @import("git_activity/lifecycle.zig");
 const log = @import("git_activity/log.zig");
 const model = @import("git_activity/model.zig");
+const exclusions = @import("exclusions.zig");
 
 const Allocator = std.mem.Allocator;
 const Environ = std.process.Environ;
@@ -53,6 +54,8 @@ pub const Options = struct {
     stdout_limit: usize = 16 * 1024 * 1024,
     /// Maximum captured Git stderr bytes.
     stderr_limit: usize = 256 * 1024,
+    /// Production diagnostics contain repository identities and stable results only.
+    report_progress: bool = false,
 };
 
 /// Scans repositories serially and returns one owned aggregate.
@@ -88,6 +91,7 @@ pub fn scan(allocator: Allocator, io: Io, environ: *const Environ.Map, options: 
         .renamed_files = 0,
     };
     for (options.sources) |source| {
+        if (options.report_progress) std.log.info("scanning repository {s}", .{source.name()});
         const repository = scanSource(&runner, gpa, options, source) catch |err| {
             if (err == error.OutOfMemory or err == error.Canceled or err == error.CleanupFailed) return err;
             try repositories.append(gpa, .{
@@ -106,8 +110,10 @@ pub fn scan(allocator: Allocator, io: Io, environ: *const Environ.Map, options: 
                 .renamed_files = 0,
             });
             aggregate.unavailable_count += 1;
+            if (options.report_progress) std.log.warn("repository {s} skipped: {s}", .{ source.name(), @tagName(failureKind(err)) });
             continue;
         };
+        if (options.report_progress) std.log.info("repository {s}: {d} authored commits", .{ source.name(), repository.commit_count });
         aggregate.commit_count += repository.commit_count;
         aggregate.text_additions += repository.text_additions;
         aggregate.text_deletions += repository.text_deletions;
@@ -140,7 +146,24 @@ fn scanRemote(runner: *const Runner, gpa: Allocator, options: Options, remote: S
         "--filter=blob:none", since_arg, remote.url,      destination,
     };
     // Phase 2: clone with the caller's token, then scan the temporary checkout.
-    try cloneRemote(runner, destination, &argv, options.token);
+    cloneRemote(runner, destination, &argv, options.token) catch |err| switch (err) {
+        error.GitCommandFailed => {
+            // Git rejects shallow-since when no reachable commits are recent.
+            // Retry the baseline's bounded depth, then a full clone.
+            const depth_argv = [_][]const u8{
+                "git",                "clone",       "--no-checkout", "--no-tags", "--no-single-branch",
+                "--filter=blob:none", "--depth=200", remote.url,      destination,
+            };
+            cloneRemote(runner, destination, &depth_argv, options.token) catch |depth_err| switch (depth_err) {
+                error.GitCommandFailed => try cloneRemote(runner, destination, &.{
+                    "git",                "clone",    "--no-checkout", "--no-tags", "--no-single-branch",
+                    "--filter=blob:none", remote.url, destination,
+                }, options.token),
+                else => return depth_err,
+            };
+        },
+        else => return err,
+    };
     var scanned = scanPath(runner, gpa, options, remote.name, destination) catch |err| {
         lifecycle.cleanupClone(runner.io, destination) catch return error.CleanupFailed;
         return err;
@@ -158,6 +181,7 @@ fn scanPath(runner: *const Runner, gpa: Allocator, options: Options, name: []con
     var output = try readLog(runner, gpa, options, path);
     defer output.deinit(runner.allocator);
     const commits = try log.parse(gpa, output.stdout, options.author_emails, options.since, options.until);
+    const attributes = if (commits.len == 0) &.{} else try readAttributePatterns(runner, gpa, options, path);
     var repository = Repository{
         .name = try gpa.dupe(u8, name),
         .location = try gpa.dupe(u8, path),
@@ -169,6 +193,7 @@ fn scanPath(runner: *const Runner, gpa: Allocator, options: Options, name: []con
         .text_deletions = 0,
         .binary_files = 0,
         .renamed_files = 0,
+        .attribute_excludes = attributes,
     };
     aggregateChanges(&repository, commits);
     return repository;
@@ -226,11 +251,30 @@ fn readLog(runner: *const Runner, gpa: Allocator, options: Options, path: []cons
     defer gpa.free(since_arg);
     const until_arg = try std.fmt.allocPrint(gpa, "--until=@{d}", .{if (options.until < std.math.maxInt(i64)) options.until + 1 else options.until});
     defer gpa.free(until_arg);
-    const argv = [_][]const u8{
-        "git",                               "log",     "--all",   "-M", "--numstat", "-z",
+    var argv: std.ArrayList([]const u8) = .empty;
+    defer argv.deinit(gpa);
+    try argv.appendSlice(gpa, &.{
+        "git",                               "log",     "--all",   "-M", "--numstat", "-z", "--fixed-strings",
         "--format=%x1e%H%x00%at%x00%ae%x00", since_arg, until_arg,
-    };
-    return runner.git(path, &argv, null);
+    });
+    const authors_start = argv.items.len;
+    defer for (argv.items[authors_start..]) |arg| gpa.free(arg);
+    for (options.author_emails) |email| {
+        const arg = try std.fmt.allocPrint(gpa, "--author=<{s}>", .{email});
+        errdefer gpa.free(arg);
+        try argv.append(gpa, arg);
+    }
+    // Partial clones can fetch missing blobs while calculating numstat.
+    return runner.git(path, argv.items, options.token);
+}
+
+fn readAttributePatterns(runner: *const Runner, gpa: Allocator, options: Options, path: []const u8) Error![]const []const u8 {
+    var listing = try runner.git(path, &.{ "git", "ls-tree", "--name-only", "HEAD", "--", ".gitattributes" }, options.token);
+    defer listing.deinit(runner.allocator);
+    if (listing.stdout.len == 0) return &.{};
+    var contents = try runner.git(path, &.{ "git", "show", "HEAD:.gitattributes" }, options.token);
+    defer contents.deinit(runner.allocator);
+    return exclusions.attributePatterns(gpa, contents.stdout);
 }
 
 /// Adds text, binary, and rename counts from commits to one repository summary.

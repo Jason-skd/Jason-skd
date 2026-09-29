@@ -61,7 +61,7 @@ test "parse rejects schema, duplicate, scalar, and cross-field failures" {
     const cases = [_]struct { yaml: []const u8, code: Diagnostic.Code }{
         .{ .yaml = minimal_yaml ++ "\nunknown: value\n", .code = .unknown_field },
         .{ .yaml = minimal_yaml ++ "\nlogin: duplicate\n", .code = .duplicate_field },
-        .{ .yaml = minimal_yaml ++ "\nexcludes:\n", .code = .unsupported_field },
+        .{ .yaml = minimal_yaml ++ "\nexclude:\n", .code = .unsupported_field },
         .{ .yaml = std.mem.replaceOwned(u8, std.testing.allocator, minimal_yaml, "window_days: 30", "window_days: 0") catch unreachable, .code = .invalid_value },
         .{ .yaml = std.mem.replaceOwned(u8, std.testing.allocator, minimal_yaml, "sections:\n  - banner", "sections:\n  - nope") catch unreachable, .code = .unknown_section },
     };
@@ -215,4 +215,44 @@ fn expectInvalid(yaml: []const u8, code: Diagnostic.Code, path: []const u8) !voi
     try std.testing.expectError(error.InvalidConfig, parse(std.testing.allocator, yaml, &diagnostic));
     try std.testing.expectEqual(code, diagnostic.code);
     try std.testing.expectEqualStrings(path, diagnostic.path);
+}
+
+test "excludes defaults flow lists and explicit empty lists preserve caller intent" {
+    var diagnostic: Diagnostic = .{};
+    const defaults = try parse(std.testing.allocator, minimal_yaml, &diagnostic);
+    defer defaults.deinit();
+    try std.testing.expectEqual(@as(usize, 8), defaults.value.excludes.paths.len);
+    try std.testing.expectEqual(@as(usize, 0), defaults.value.excludes.repos.len);
+    try std.testing.expectEqualStrings("markup", defaults.value.languages.types.?[1]);
+    const explicit = try parse(std.testing.allocator, minimal_yaml ++
+        "\nexcludes:\n  repos: [Org/Repo, other]\n  languages: [Groovy, ]\n  paths: []\nlanguages:\n  types: []\n", &diagnostic);
+    defer explicit.deinit();
+    try std.testing.expectEqualStrings("Org/Repo", explicit.value.excludes.repos[0]);
+    try std.testing.expectEqualStrings("other", explicit.value.excludes.repos[1]);
+    try std.testing.expectEqualStrings("Groovy", explicit.value.excludes.languages[0]);
+    try std.testing.expectEqual(@as(usize, 0), explicit.value.excludes.paths.len);
+    try std.testing.expectEqual(@as(usize, 0), explicit.value.languages.types.?.len);
+    const override = try parse(std.testing.allocator, minimal_yaml ++ "\nexcludes:\n  paths:\n    - '**/zig-pkg/**'\n", &diagnostic);
+    defer override.deinit();
+    try std.testing.expectEqual(@as(usize, 1), override.value.excludes.paths.len);
+    try std.testing.expectEqualStrings("**/zig-pkg/**", override.value.excludes.paths[0]);
+    try expectInvalid(minimal_yaml ++ "\nexcludes:\n  paths: wrong\n", .invalid_type, "excludes.paths");
+    try expectInvalid(minimal_yaml ++ "\nexcludes:\n  paths: []\n  paths: []\n", .duplicate_field, "excludes.paths");
+    try expectInvalid(minimal_yaml ++ "\nexcludes:\n  paths: [one,,two]\n", .invalid_value, "excludes.paths");
+    try expectInvalid(minimal_yaml ++ "\nexcludes:\n  typo: []\n", .unknown_field, "typo");
+}
+
+fn parseExcludesAllocation(gpa: std.mem.Allocator) !void {
+    const bytes = try gpa.dupe(u8, minimal_yaml ++ "\nexcludes:\n  repos: [Org/Repo]\n  languages: [Groovy]\n  paths: ['**/vendor/**', '**/zig-pkg/**']\n");
+    defer gpa.free(bytes);
+    var diagnostic: Diagnostic = .{};
+    const parsed = try parse(gpa, bytes, &diagnostic);
+    defer parsed.deinit();
+    @memset(bytes, 'x');
+    try std.testing.expectEqualStrings("Org/Repo", parsed.value.excludes.repos[0]);
+    try std.testing.expectEqualStrings("**/zig-pkg/**", parsed.value.excludes.paths[1]);
+}
+
+test "excludes config owns its input and cleans up allocation failures" {
+    try std.testing.checkAllAllocationFailures(std.testing.allocator, parseExcludesAllocation, .{});
 }

@@ -1,13 +1,9 @@
-
-<details>
-<summary>Generator & documentation</summary>
-
-### Generate this profile
+# Generate this profile
 
 The sole production generator is Zig on the default branch `refactor/zig`.
 `feat/python` preserves the retired implementation for historical reference only.
 Edit `profile.yaml` for profile content; this README is generated in full.
-The instructions and index below come from `src/repository_notes.md`.
+The generated README contains only the profile; operational documentation lives here.
 
 Use the CI toolchain, Zig `0.17.0-dev.2307+392b17125`:
 
@@ -30,13 +26,11 @@ GitHub Actions runs daily, on relevant pushes to `refactor/zig`, or by manual
 dispatch. Use a separate test branch for fixture dispatch because it writes
 demo data to that branch's README.
 
-### Documentation
+## Documentation
 
-- [AI collaboration entry point](AGENTS.md)
-- [Task workflow](docs/governance/workflow.md)
-- [Engineering standards](docs/governance/engineering.md)
-- [Repository rules](docs/governance/repository.md)
-- [Zig implementation scope and workflow operation](docs/zig_rewrite.md)
-- [Verified Zig practices](docs/zig_practices.md)
-
-</details>
+- [AI collaboration entry point](../AGENTS.md)
+- [Task workflow](governance/workflow.md)
+- [Engineering standards](governance/engineering.md)
+- [Repository rules](governance/repository.md)
+- [Zig implementation scope and workflow operation](zig_rewrite.md)
+- [Verified Zig practices](zig_practices.md)

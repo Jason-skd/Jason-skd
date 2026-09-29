@@ -162,14 +162,14 @@ fn allocationFailureBuild(allocator: std.mem.Allocator) !void {
     defer built.deinit();
 }
 
-test "recent selection uses the configured window and preserves it in empty payloads" {
+test "recent selection caps lookback at sixty days within the collection window" {
     const owned = [_]github_workflow.Repository{.{ .name = "repo", .name_with_owner = "target/repo", .description = null, .is_private = false, .stars = 0, .primary_language = null }};
     const profile = fixtureProfile(.authenticated_as_target, &owned, &.{}, empty_contributions);
     const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
     const cases = [_]struct { days: u32, age: i64, selected: bool }{
         .{ .days = 365, .age = 60, .selected = true },
-        .{ .days = 365, .age = 61, .selected = true },
-        .{ .days = 365, .age = 365, .selected = true },
+        .{ .days = 365, .age = 61, .selected = false },
+        .{ .days = 365, .age = 365, .selected = false },
         .{ .days = 365, .age = 366, .selected = false },
         .{ .days = 30, .age = 30, .selected = true },
         .{ .days = 30, .age = 31, .selected = false },
@@ -218,4 +218,46 @@ test "zero collection window is rejected even without recent projects" {
 
 test "complete page payload construction releases allocation failures" {
     try std.testing.checkAllAllocationFailures(std.testing.allocator, allocationFailureBuild, .{});
+}
+
+test "recent repository exclusions retain account stats and language fallback ignores vendored code" {
+    const owned = [_]github_workflow.Repository{.{ .name = "repo", .name_with_owner = "target/repo", .description = null, .is_private = false, .stars = 7, .primary_language = null }};
+    const profile = fixtureProfile(.authenticated_as_target, &owned, &.{}, empty_contributions);
+    var cfg = fixtureConfig(&.{.recent_project}, null, true, true);
+    const changes = [_]git_activity.FileChange{
+        .{ .file = .{ .path = "vendor/sqlite.c", .additions = 10000, .deletions = 0 } },
+        .{ .file = .{ .path = "main.go", .additions = 10, .deletions = 0 } },
+    };
+    var authored = commit(now - 86400);
+    authored.changes = &changes;
+    const repositories = [_]git_activity.Repository{repository("target/repo", &.{authored}, .scanned)};
+    const activity = fixtureAggregate(&repositories);
+    const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
+    const built = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
+    defer built.deinit();
+    try std.testing.expectEqualStrings("Go", built.value.recent_project.selection.project.primary_language.?);
+    cfg.excludes.repos = &.{"REPO"};
+    const excluded = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
+    defer excluded.deinit();
+    try std.testing.expect(excluded.value.recent_project.selection == .none);
+    try std.testing.expectEqual(@as(u64, 7), excluded.value.stats.stars);
+}
+
+test "recent tied counts use latest repository commit including today then baseline lexical name" {
+    const owned = [_]github_workflow.Repository{
+        .{ .name = "a", .name_with_owner = "target/a", .description = null, .is_private = false, .stars = 0, .primary_language = null },
+        .{ .name = "b", .name_with_owner = "target/b", .description = null, .is_private = false, .stars = 0, .primary_language = null },
+    };
+    const profile = fixtureProfile(.authenticated_as_target, &owned, &.{}, empty_contributions);
+    const cfg = fixtureConfig(&.{.recent_project}, null, true, true);
+    const languages = language_stats.Result{ .allocator = std.testing.allocator, .entries = &.{} };
+    const repositories = [_]git_activity.Repository{
+        repository("target/a", &.{commit(now - 86400 + 60)}, .scanned),
+        repository("target/b", &.{ commit(now - 86400), commit(now) }, .scanned),
+    };
+    const activity = fixtureAggregate(&repositories);
+    const built = try page_payload.build(std.testing.allocator, baseInput(&cfg, &profile, &activity, &languages));
+    defer built.deinit();
+    try std.testing.expectEqualStrings("target/b", built.value.recent_project.selection.project.identity);
+    try std.testing.expectEqual(@as(usize, 1), built.value.recent_project.selection.project.commit_count);
 }

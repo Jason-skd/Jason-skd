@@ -58,7 +58,6 @@ pub fn assemble(allocator: std.mem.Allocator, cfg: *const config.Config, page: *
     }
     output.writer.writeAll("\n\n") catch return error.OutOfMemory;
     render.footer(&output.writer, &cfg.theme) catch return error.OutOfMemory;
-    output.writer.writeAll(@embedFile("repository_notes.md")) catch return error.OutOfMemory;
     return output.toOwnedSlice();
 }
 

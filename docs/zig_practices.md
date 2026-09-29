@@ -224,6 +224,16 @@ ymlz 发布包的 manifest `paths` 不包含上游测试使用的 `resources/`�
 - ymlz parser 和 raw result 可以放在临时 `ArenaAllocator` 中。这样 `loadReader` 任意错误都由 arena 统一清理，不需要在没有完整 result 时调用 `Ymlz.deinit`；校验后的公开结果再复制到独立 arena。
 - 对外 parsed result 采用 `std.json.Parsed` 的所有权模式：结构体持有 `*ArenaAllocator` 和 typed value，`deinit` 先保存 child allocator，再释放 arena 并销毁 arena 对象。成功结果不得借用输入；失败诊断若借用 offending text，API 文档必须声明其生命周期。
 
+补充验证（Zig `0.17.0-dev.2326+f94185e67`，源码
+`f94185e67749c9cfcf21be5cf9c03baf8d2ac025`；同一锁定 ymlz 0.7.1）：
+`Ymlz.parseField` 对字符串列表直接调用 `parseStringArrayExpression`，不解析
+同一行的 flow-list 内容。需要支持局部 schema 的 `[a, b]` 或 `[]` 时，必须
+先验证并转成 block-list；空列表保留键、无子项即可获得非 null 的空切片，
+与缺失 optional 字段区分。不要直接将 flow-list 原文交给 binder。
+源码依据为依赖 `src/root.zig` 的上述两个函数和 `parse` 的 optional 初始化；
+配置测试已验证默认值、显式空值、flow/block 列表、独立所有权及逐分配失败清理。
+升级 binder 或扩展 YAML 语法时重新验证。
+
 ## 解析器适配器与返回值所有权
 
 这些结论来自当前 Zig revision 的标准库和锁定的 ymlz 源码，可复用于其他 typed text/config parser：

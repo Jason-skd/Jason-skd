@@ -80,7 +80,7 @@ pub fn recentProject(w: *Writer, cfg: *const config.RecentProjectConfig, data: *
     try heading(w, cfg.header);
     try w.writeAll("<p align=\"center\">");
     switch (data.selection) {
-        .none => try w.print("<sub>No commits to show in the last {d} days</sub></p>", .{data.window_days}),
+        .none => try w.writeAll("<sub>No commits to show in the last year</sub></p>"),
         .project => |project| {
             if (project.repository_name.len == 0 or project.github_url.len == 0) return error.InvalidSection;
             const language = project.primary_language orelse "";

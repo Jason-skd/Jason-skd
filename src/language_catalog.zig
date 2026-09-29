@@ -18,18 +18,16 @@ pub const Language = struct {
 
 /// Classifies a repository-relative path without I/O or allocation.
 ///
-/// The last path component is checked as a special filename first. Extension
-/// candidates are then tried from longest to shortest, including the dot.
+/// Like the Python baseline, a special filename wins; otherwise only the last
+/// extension is used. Leading-dot files without a later dot have no extension.
 pub fn classify(path: []const u8) ?Language {
     const basename = if (std.mem.lastIndexOfScalar(u8, path, '/')) |slash| path[slash + 1 ..] else path;
     if (basename.len == 0) return null;
     if (findMapping(&snapshot.filenames, basename)) |name| return findLanguage(name);
 
-    var dot = std.mem.indexOfScalar(u8, basename, '.') orelse return null;
-    while (true) {
-        if (findMapping(&snapshot.extensions, basename[dot..])) |name| return findLanguage(name);
-        dot = std.mem.indexOfScalarPos(u8, basename, dot + 1, '.') orelse return null;
-    }
+    const dot = std.mem.lastIndexOfScalar(u8, basename, '.') orelse return null;
+    if (dot == 0) return null;
+    return if (findMapping(&snapshot.extensions, basename[dot..])) |name| findLanguage(name) else null;
 }
 
 fn findMapping(mappings: []const snapshot.Mapping, key: []const u8) ?[]const u8 {
@@ -82,9 +80,10 @@ test "special filenames precede extensions and ignore ASCII case" {
     try std.testing.expectEqual(LanguageType.data, extension.language_type);
 }
 
-test "ordinary and multi-part extensions use the longest catalog match" {
+test "ordinary and multi-part filenames use their last extension" {
     try std.testing.expectEqualStrings("Zig", classify("src/MAIN.ZIG").?.name);
-    try std.testing.expectEqualStrings("Blade", classify("views/page.BLADE.PHP").?.name);
+    try std.testing.expectEqualStrings("PHP", classify("views/page.BLADE.PHP").?.name);
+    try std.testing.expect(classify("src/.py") == null);
     try std.testing.expectEqualStrings("PHP", classify("views/page.other.PHP").?.name);
 }
 

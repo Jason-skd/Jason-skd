@@ -88,6 +88,12 @@ pub const RecentProjectConfig = struct {
 };
 
 /// Validated profile configuration with all generic defaults applied.
+pub const ExcludesConfig = struct {
+    repos: []const []const u8 = &.{},
+    languages: []const []const u8 = &.{},
+    paths: []const []const u8 = @import("../exclusions.zig").default_paths,
+};
+
 pub const Config = struct {
     login: []const u8,
     timezone: Timezone,
@@ -103,6 +109,7 @@ pub const Config = struct {
     languages: LanguagesConfig,
     org_card: OrgCardConfig,
     recent_project: RecentProjectConfig,
+    excludes: ExcludesConfig = .{},
 };
 
 /// Owns `value` and every string and slice reachable from it.

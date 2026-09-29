@@ -64,6 +64,13 @@ pub const RawRecentProject = struct {
 };
 
 /// All fields are optional so ymlz cannot expose an uninitialized omission.
+pub const RawExcludes = struct {
+    repos: ?[][]const u8,
+    languages: ?[][]const u8,
+    paths: ?[][]const u8,
+    _present: ?bool,
+};
+
 /// Nested mappings are synthesized by schema.zig when they are absent.
 pub const RawConfig = struct {
     login: ?[]const u8,
@@ -80,4 +87,5 @@ pub const RawConfig = struct {
     languages: RawLanguages,
     org_card: RawOrgCard,
     recent_project: RawRecentProject,
+    excludes: RawExcludes,
 };

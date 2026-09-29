@@ -3,7 +3,7 @@
 > 定稿时间：2026-09-19
 >
 > 本文前半部分记录迁移时 Python 主页的功能边界、Zig 生态调查结论和 MVP 范围。
-> 当前生产实现为 Zig；运行说明和文档索引由 `src/repository_notes.md` 嵌入生成的 README。
+> 当前生产实现为 Zig；生成器说明保留在 [`generator.md`](generator.md)，不会嵌入个人主页 README。
 > 后续实现以本文为范围依据；超出 MVP 的功能在出现真实需求后再讨论。
 
 ## 一、结论
@@ -94,12 +94,12 @@ Git 活动模块只实现主页实际需要的最小集合。MVP 不提前复刻
 - 特殊文件名到语言的映射；
 - 文件扩展名到语言的映射；
 - 语言到 `programming` 等类型的映射；
-- 仅统计 `programming` 类型；
+- 按 `languages.types` 白名单统计（默认 `programming` 和 `markup`）；
 - 多仓库语言权重聚合。
 
-### 明确不做
+### 排除规则与 Python 口径
 
-MVP 不支持原 YAML 中的整个 `excludes` 配置块，包括：
+支持原 YAML 的 `excludes` 配置块，包括：
 
 ```yaml
 excludes:
@@ -117,20 +117,27 @@ excludes:
     - "**/zig-pkg/**"
 ```
 
-相应地，MVP 不实现：
+仓库名按完整 `owner/name` 或裸名称、不区分 ASCII 大小写精确匹配；
+仓库排除同时作用于扫描和最近项目候选，不改变账号 stars/contributions。
+语言排除按名称精确匹配，优先于 `languages.types`。路径规则与 Python
+`fnmatch` 口径一致，支持 `*`、`?`、字符集合和否定集合；无 `/` 的规则
+匹配 basename，`**/` 前缀同时匹配仓库根目录。路径比较区分大小写。
+省略 `paths` 使用八个通用 vendor 类默认规则；显式列表整体替换默认值，
+`paths: []` 清空默认路径排除。生产配置额外排除 `zig-pkg` 中的 vendored SQLite。
+各仓库根 `.gitattributes` 中以 `linguist-vendored` 或 `linguist-generated`
+开头的属性条目也加入路径排除，保持 Python 的简化语义，不实现完整属性解释器。
+路径排除只影响语言权重，不删除提交，也不改变最近项目的提交数。
 
-- 仓库排除；
-- 手动语言排除；
-- 路径排除；
-- glob 解析或匹配；
-- `.gitattributes` 中的 `linguist-vendored`、`linguist-generated` 等语义；
+### 明确不做
+
 - GitHub Linguist 的 shebang、modeline、内容启发式和完整歧义判断；
 - 通用模板语言；
 - 通用 GraphQL 客户端；
 - 通用缓存库；
 - 任何新的独立仓库。
 
-MVP 配置 schema 不接受 `excludes`。如果旧配置仍保留该字段，应明确返回配置错误，不能静默接受后忽略，避免用户误以为排除规则已经生效。
+配置使用 `excludes`，不接受拼写错误和旧别名 `exclude`。排除列表支持 block
+语法及单行 flow 列表；未知子键、重复键和非法类型在 typed binding 前报错。
 
 ## 四、内部模块设计
 
@@ -153,7 +160,7 @@ MVP 配置 schema 不接受 `excludes`。如果旧配置仍保留该字段，应
 - 使用 `ymlz` 将 YAML 绑定到明确的 Zig struct；
 - 校验必需字段、section 名称、重复 section 和数值范围；
 - 提供 MVP 默认值；
-- 拒绝不受支持的 `excludes` 配置。
+- 校验并归一化 `excludes`，区分省略列表与显式空列表。
 
 ### `github`
 
@@ -207,6 +214,11 @@ GraphQL helper 只负责序列化 `{query, variables}` 和解析 `{data, errors}
 - 解析必要的 `git log`/`numstat` 输出；
 - 返回结构化活动数据。
 
+clone 优先使用 shallow-since，Git 拒绝该窗口时回退到 depth 200、再到完整
+clone，均保留所有分支。`git log` 先按作者邮箱固定字符串过滤，再在 parser
+中精确校验邮箱及时间；partial clone 的后续日志和属性读取继续携带认证。
+生产日志记录逐仓库扫描结果与稳定失败类别；失败仓库不再无诊断地漏算。
+
 MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存。仓库和临时目录只服务于单次运行，并由该模块或调用方明确清理。未来发现真实性能问题后，再为此模块设计专用缓存，不抽象成通用缓存库。
 
 ### `language_catalog` 与 `language_stats`
@@ -223,7 +235,7 @@ MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存�
 `language_stats` 负责：
 
 - 接收 Git 活动模块提供的文件权重；
-- 只保留 `programming` 类型；
+- 应用仓库、路径、语言排除和类型白名单；
 - 聚合、排序和计算百分比。
 
 快照在运行时不联网更新。更新快照是显式的维护操作，生成脚本和快照元数据应记录上游来源；MVP 不要求生成脚本本身使用 Zig。
@@ -237,15 +249,18 @@ MVP 不实现 refs fingerprint、stale-cache 回退或扫描结果 JSON 缓存�
 ### `components` 与 `assemble`
 
 语言统计与渲染 payload 使用 `percentage_tenths: u16` 表示十分之一百分点
-（352 即 35.2%）。保留 Top N 截取后归一化的口径，最大余数法分配 1000
-个单位，非空结果合计 100.0%；组件固定展示一位小数，不重新计算占比。
+（352 即 35.2%）。分母是过滤后全部语言权重，不因 Top N 截取而重新归一。
+按 Python 顺序先保留两位小数，再格式化到一位小数；独立舍入可能使合计
+不等于 100.0%。组件只显示结果，不重新计算占比。
 
 时间窗口由应用 pipeline 使用 `config.window_days` 统一确定，并用于 Git/GitHub
 采集及 payload 构建。生产配置为 365 天；不得采集较短窗口却标注较长范围。
-近期项目从昨天开始按 UTC+8 自然日选择，最大回溯天数使用该配置，不另设
-60 天上限。stats 与 recent-project payload 均携带窗口天数；无项目时也保留
-该字段，供组件生成 `No commits to show in the last N days`。窗口不从最早
-提交日期反推。stats 默认标题随窗口变化，显式自定义标题保持原样。
+近期项目从昨天开始按 UTC+8 自然日选择，在采集窗口内最多回溯 60 天，与
+Python 基线一致。首个活跃日按提交数、仓库在整个采集窗口内的最新提交时间、
+仓库名升序打破并列。GitHub 缺少主语言时，回退到该仓库经过路径过滤后的
+提交语言权重。空状态保留 Python 文案 `No commits to show in the last year`。
+stats 与 recent-project payload 均携带采集窗口；stats 默认标题随窗口变化，
+显式自定义标题保持原样。stats 脚注仍显示 `Last N days ·`。
 
 - 每个 section 使用标准库 Writer 输出 Markdown/HTML；
 - component 只接收自己的配置切片和数据类型；
@@ -334,11 +349,11 @@ MVP 不迁移这套缓存：
 
 ### 测试边界
 
-- 配置正常值、默认值、未知 section、重复 section 和不支持的 `excludes`。
+- 配置正常值、默认值、未知 section、重复 section、`excludes` 覆盖和显式空列表。
 - JSON 正常响应、未知字段、缺失必需字段、`null`、类型错误和 GraphQL `errors`。
 - HTTP 成功、认证失败、限流、可重试错误和 token 脱敏。
 - Git 命令失败、超时、二进制文件、重命名路径和作者/时间窗筛选。
-- 语言文件名/扩展名映射、只保留 programming 类型、权重及百分比。
+- 语言文件名/末段扩展名映射、类型白名单、路径/属性排除、权重及 Top N 百分比。
 - 每个 section 的 fixture 输出和完整页面 fixture。
 - 任一 section 失败时不改写 README。
 - 原子输出成功、失败清理和旧文件保留。
@@ -361,7 +376,6 @@ MVP 不迁移这套缓存：
 
 - 将内部模块拆成独立仓库或公共 Zig 包；
 - 任意 IANA 时区和夏令时；
-- `excludes`、glob 和 `.gitattributes`；
 - 完整 GitHub Linguist 兼容；
 - Git 扫描缓存和离线 stale-cache；
 - 通用 GraphQL client 或 query builder；
@@ -481,8 +495,8 @@ push paths 覆盖 workflow、构建与依赖 manifest、配置、src、tests、t
 格式。fixture dispatch 应选择验收分支，以免将演示页面写到主页分支。
 默认分支为 `refactor/zig`，它是唯一生产生成路径；`feat/python` 仅保留退役
 实现供历史查阅，不再用于生产生成。Zig 分支不含 Python 源码、依赖锁、
-解释器版本文件或 Python 调用。README 运行说明与文档索引来自
-`src/repository_notes.md`，每次生成都会保留；不要手工修改生成后的 README。
+解释器版本文件或 Python 调用。运行说明与文档索引位于
+[`generator.md`](generator.md)，不进入生成的主页；不要手工修改生成后的 README。
 
 ### 2026-09-27 验收记录
 

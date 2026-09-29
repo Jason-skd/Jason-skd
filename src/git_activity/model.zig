@@ -104,6 +104,8 @@ pub const Repository = struct {
     binary_files: u64,
     /// Matching rename changes.
     renamed_files: u64,
+    /// Root .gitattributes vendored/generated patterns, owned by the scan arena.
+    attribute_excludes: []const []const u8 = &.{},
 };
 
 /// Totals across all configured repositories.

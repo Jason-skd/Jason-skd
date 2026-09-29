@@ -38,7 +38,11 @@ pub fn generate(allocator: std.mem.Allocator, io: std.Io, environ: *const std.pr
 }
 
 fn renderData(allocator: std.mem.Allocator, cfg: *const config.Config, data: input.Data, now_utc: i64) Error![]u8 {
-    const languages = language_stats.aggregate(allocator, data.activity.repositories, cfg.languages.top) catch |err| return classify(err, error.Languages);
+    const languages = language_stats.aggregate(allocator, data.activity.repositories, .{
+        .top = cfg.languages.top,
+        .types = cfg.languages.types orelse &.{ "programming", "markup" },
+        .excludes = cfg.excludes,
+    }) catch |err| return classify(err, error.Languages);
     defer languages.deinit();
     const page = payload.build(allocator, .{
         .config = cfg,

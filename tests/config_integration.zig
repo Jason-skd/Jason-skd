@@ -49,7 +49,7 @@ test "public API reports schema failures without panicking" {
         .{ .fixture = @embedFile("fixtures/config/invalid_unknown.yaml"), .code = .unknown_field, .path = "mystery" },
         .{ .fixture = @embedFile("fixtures/config/invalid_duplicate.yaml"), .code = .duplicate_field, .path = "login" },
         .{ .fixture = @embedFile("fixtures/config/invalid_boolean.yaml"), .code = .invalid_type, .path = "org_card.enabled" },
-        .{ .fixture = @embedFile("fixtures/config/invalid_legacy.yaml"), .code = .unsupported_field, .path = "excludes" },
+        .{ .fixture = @embedFile("fixtures/config/invalid_legacy.yaml"), .code = .unsupported_field, .path = "exclude" },
         .{ .fixture = @embedFile("fixtures/config/invalid_missing_login.yaml"), .code = .missing_field, .path = "login" },
     };
 

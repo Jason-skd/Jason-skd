@@ -34,6 +34,7 @@ const TopKey = enum(u4) {
     languages,
     org_card,
     recent_project,
+    excludes,
 };
 
 const ValueKind = enum {
@@ -52,8 +53,8 @@ const ChildSpec = struct {
 };
 
 const MappingState = struct {
-    present: [14]bool = @splat(false),
-    nested_seen: [14]u32 = @splat(0),
+    present: [15]bool = @splat(false),
+    nested_seen: [15]u32 = @splat(0),
     section_bits: u8 = 0,
     section_count: usize = 0,
     author_count: usize = 0,
@@ -169,7 +170,11 @@ pub fn preflight(
 
             if (spec.kind == .string_list) {
                 if (entry.value.len != 0) {
-                    return invalid(diagnostic, .invalid_type, line_number, spec.path, raw_line, "field must use an indented block list");
+                    if (top != .excludes and top != .languages) {
+                        return invalid(diagnostic, .invalid_type, line_number, spec.path, raw_line, "field must use an indented block list");
+                    }
+                    try appendInlineList(&output, allocator, entry.key, entry.value, spec.path, line_number, raw_line, diagnostic);
+                    continue;
                 }
                 current_list = spec;
             } else {
@@ -204,7 +209,7 @@ pub fn preflight(
     }
 
     try validateRequired(state, seen_top, diagnostic);
-    const nested_tops = [_]TopKey{ .theme, .org, .stats, .typing, .banner, .languages, .org_card, .recent_project };
+    const nested_tops = [_]TopKey{ .theme, .org, .stats, .typing, .banner, .languages, .org_card, .recent_project, .excludes };
     inline for (nested_tops) |top| {
         if (!state.present[@backingInt(top)]) {
             try output.appendSlice(allocator, @tagName(top));
@@ -337,7 +342,7 @@ fn topKind(top: TopKey) ValueKind {
         .window_days => .positive_integer,
         .include_external => .boolean,
         .author_emails, .sections => .string_list,
-        .theme, .org, .stats, .typing, .banner, .languages, .org_card, .recent_project => .mapping,
+        .theme, .org, .stats, .typing, .banner, .languages, .org_card, .recent_project, .excludes => .mapping,
     };
 }
 
@@ -362,6 +367,9 @@ fn childSpec(top: TopKey, key: []const u8) ?ChildSpec {
         }),
         .recent_project => childSpecFromNames(key, "recent_project", &.{
             .{ "enabled", .boolean }, .{ "header", .string }, .{ "icon_height", .positive_integer }, .{ "exclude_external", .boolean },
+        }),
+        .excludes => childSpecFromNames(key, "excludes", &.{
+            .{ "repos", .string_list }, .{ "languages", .string_list }, .{ "paths", .string_list },
         }),
         else => null,
     };
@@ -390,6 +398,40 @@ fn appendThemeColor(output: *std.ArrayList(u8), allocator: std.mem.Allocator, ke
 fn appendLine(output: *std.ArrayList(u8), allocator: std.mem.Allocator, line: []const u8) !void {
     try output.appendSlice(allocator, line);
     try output.append(allocator, '\n');
+}
+
+/// Lower flow lists to the block-list subset understood by the locked binder.
+/// Keep an explicit empty list present so it overrides the default paths.
+fn appendInlineList(output: *std.ArrayList(u8), allocator: std.mem.Allocator, key: []const u8, value: []const u8, path: []const u8, line: usize, raw_line: []const u8, diagnostic: *Diagnostic) !void {
+    if (value.len < 2 or value[0] != '[' or value[value.len - 1] != ']')
+        return invalid(diagnostic, .invalid_type, line, path, raw_line, "field must be a list of strings");
+    try output.appendSlice(allocator, "  ");
+    try output.appendSlice(allocator, key);
+    try output.appendSlice(allocator, ":\n");
+    const contents = value[1 .. value.len - 1];
+    var start: usize = 0;
+    var quote: ?u8 = null;
+    for (contents, 0..) |char, index| {
+        if (quote) |q| {
+            if (char == q) quote = null;
+        } else if (char == '\'' or char == '"') {
+            quote = char;
+        } else if (char == ',') {
+            const item = std.mem.trim(u8, contents[start..index], " ");
+            if (item.len == 0) return invalid(diagnostic, .invalid_value, line, path, raw_line, "list entries must not be empty");
+            try appendInlineItem(output, allocator, item, path, line, raw_line, diagnostic);
+            start = index + 1;
+        }
+    }
+    const last = std.mem.trim(u8, contents[start..], " ");
+    if (last.len > 0) try appendInlineItem(output, allocator, last, path, line, raw_line, diagnostic);
+}
+
+fn appendInlineItem(output: *std.ArrayList(u8), allocator: std.mem.Allocator, item: []const u8, path: []const u8, line: usize, raw_line: []const u8, diagnostic: *Diagnostic) !void {
+    try validateString(item, path, line, raw_line, diagnostic);
+    if (scalarText(item).len == 0) return invalid(diagnostic, .invalid_value, line, path, raw_line, "list entries must not be empty");
+    try output.appendSlice(allocator, "    - ");
+    try appendLine(output, allocator, item);
 }
 
 const MappingEntry = struct {
@@ -450,7 +492,7 @@ fn leadingSpaces(line: []const u8) usize {
 }
 
 fn isUnsupported(key: []const u8) bool {
-    return std.mem.eql(u8, key, "excludes") or std.mem.eql(u8, key, "exclude") or std.mem.eql(u8, key, "languages_card");
+    return std.mem.eql(u8, key, "exclude") or std.mem.eql(u8, key, "languages_card");
 }
 
 fn bitFor(top: TopKey) u16 {

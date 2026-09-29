@@ -8,5 +8,5 @@ sections:
   - banner
 typing:
   width: 600
-excludes:
+exclude:
   repos:

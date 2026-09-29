@@ -32,5 +32,7 @@ test "production profile parses through the public configuration API" {
         .recent_project,
     };
     try std.testing.expectEqualSlices(config.Section, &expected, parsed.value.sections);
-    try std.testing.expect(std.mem.indexOf(u8, production_yaml, "excludes:") == null);
+    try std.testing.expectEqualStrings("Groovy", parsed.value.excludes.languages[0]);
+    try std.testing.expectEqual(@as(usize, 9), parsed.value.excludes.paths.len);
+    try std.testing.expectEqualStrings("**/zig-pkg/**", parsed.value.excludes.paths[8]);
 }

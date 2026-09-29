@@ -79,6 +79,7 @@ test "local bare remote clone is bounded and its checkout is removed" {
     const source_repo = try std.fs.path.join(testing.allocator, &.{ root, "source" });
     defer testing.allocator.free(source_repo);
     try runGit(&environ, root, &.{ "git", "init", "--bare", "-q", bare });
+    try runGit(&environ, bare, &.{ "git", "config", "uploadpack.allowFilter", "true" });
     try runGit(&environ, root, &.{ "git", "init", "-q", source_repo });
     try runGit(&environ, source_repo, &.{ "git", "config", "user.email", "owner@example.test" });
     try runGit(&environ, source_repo, &.{ "git", "config", "user.name", "Owner" });
@@ -110,10 +111,72 @@ test "local bare remote clone is bounded and its checkout is removed" {
     try testing.expectEqual(@as(usize, 0), result.value.unavailable_count);
     try testing.expectEqual(@as(usize, 1), result.value.commit_count);
     try testing.expectEqualStrings(remote_url, result.value.repositories[0].location);
+    // No commit meets this later window. shallow-since fails, but the fallback
+    // must produce an available, empty repository and clean its checkout.
+    var old = try activity.scan(testing.allocator, testing.io, &environ, .{
+        .sources = &.{.{ .remote = .{ .name = "owner/project", .url = remote_url } }},
+        .author_emails = &authors,
+        .since = 1700001000,
+        .until = 1700002000,
+        .clone_root = root,
+        .timeout = .{ .duration = .{ .raw = .fromSeconds(10), .clock = .awake } },
+    });
+    defer old.deinit();
+    try testing.expectEqual(@as(usize, 0), old.value.unavailable_count);
+    try testing.expectEqual(@as(usize, 0), old.value.commit_count);
     var entries = tmp.dir.iterate();
     while (try entries.next(testing.io)) |entry| {
         try testing.expect(!std.mem.startsWith(u8, entry.name, "git-activity-"));
     }
+}
+
+test "organization Git scan filters authors before output limits and applies root attributes to languages" {
+    const languages = @import("profile_generator").language_stats;
+    var environ = std.process.Environ.Map.init(testing.allocator);
+    defer environ.deinit();
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const root = try temporaryRoot(&tmp);
+    defer testing.allocator.free(root);
+    try runGit(&environ, root, &.{ "git", "init", "-q", root });
+    try runGit(&environ, root, &.{ "git", "config", "user.email", "other@example.test" });
+    try runGit(&environ, root, &.{ "git", "config", "user.name", "Other" });
+    try environ.put("GIT_AUTHOR_DATE", "1700000000 +0000");
+    try environ.put("GIT_COMMITTER_DATE", "1700000000 +0000");
+    for (0..80) |index| {
+        var buffer: [64]u8 = undefined;
+        const name = try std.mem.print(&buffer, "foreign-file-{d}.go", .{index});
+        try tmp.dir.writeFile(testing.io, .{ .sub_path = name, .data = "foreign\n" });
+    }
+    try runGit(&environ, root, &.{ "git", "add", "." });
+    try runGit(&environ, root, &.{ "git", "commit", "-qm", "foreign" });
+    try runGit(&environ, root, &.{ "git", "config", "user.email", "owner+git@example.test" });
+    try tmp.dir.createDir(testing.io, "vendor", .default_dir);
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "vendor/sqlite.c", .data = "vendor\nvendor\nvendor\n" });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "generated.go", .data = "generated\ngenerated\ngenerated\n" });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = ".gitattributes", .data = "generated.go linguist-generated=true\n" });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "main.go", .data = "own\nown\n" });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "main.py", .data = "own\n" });
+    try runGit(&environ, root, &.{ "git", "add", "." });
+    try runGit(&environ, root, &.{ "git", "commit", "-qm", "own" });
+    var scanned = try activity.scan(testing.allocator, testing.io, &environ, .{
+        .sources = &.{.{ .existing = .{ .name = "org/go-project", .path = root } }},
+        .author_emails = &.{ "absent@example.test", "owner+git@example.test" },
+        .since = 1699999999,
+        .until = 1700000001,
+        .stdout_limit = 1024,
+        .timeout = .{ .duration = .{ .raw = .fromSeconds(10), .clock = .awake } },
+    });
+    defer scanned.deinit();
+    try testing.expectEqual(@as(usize, 0), scanned.value.unavailable_count);
+    try testing.expectEqual(@as(usize, 1), scanned.value.commit_count);
+    try testing.expectEqualStrings("generated.go", scanned.value.repositories[0].attribute_excludes[0]);
+    const result = try languages.aggregate(testing.allocator, scanned.value.repositories, .{ .top = 3 });
+    defer result.deinit();
+    try testing.expectEqual(@as(usize, 2), result.entries.len);
+    try testing.expectEqualStrings("Go", result.entries[0].name);
+    try testing.expectEqual(@as(u64, 2), result.entries[0].weight);
+    try testing.expectEqual(@as(u16, 667), result.entries[0].percentage_tenths);
 }
 
 test "Git credential config is injected without exposing the token" {
@@ -182,4 +245,59 @@ test "failed and credential-bearing remotes leave no temporary checkout" {
     while (try entries.next(testing.io)) |entry| {
         try testing.expect(!std.mem.startsWith(u8, entry.name, "git-activity-"));
     }
+}
+
+test "partial clone lazy fetch retains credentials for log and attributes" {
+    var env = std.process.Environ.Map.init(testing.allocator);
+    defer env.deinit();
+    var tmp = testing.tmpDir(.{});
+    defer tmp.cleanup();
+    const root = try temporaryRoot(&tmp);
+    defer testing.allocator.free(root);
+    const origin = try std.fs.path.join(testing.allocator, &.{ root, "origin" });
+    defer testing.allocator.free(origin);
+    const clone = try std.fs.path.join(testing.allocator, &.{ root, "clone" });
+    defer testing.allocator.free(clone);
+    try runGit(&env, root, &.{ "git", "init", "-q", origin });
+    try runGit(&env, origin, &.{ "git", "config", "user.email", "owner@example.test" });
+    try runGit(&env, origin, &.{ "git", "config", "user.name", "Owner" });
+    try runGit(&env, origin, &.{ "git", "config", "uploadpack.allowFilter", "true" });
+    try env.put("GIT_AUTHOR_DATE", "1700000000 +0000");
+    try env.put("GIT_COMMITTER_DATE", "1700000000 +0000");
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "origin/main.go", .data = "package main\n" });
+    try tmp.dir.writeFile(testing.io, .{ .sub_path = "origin/.gitattributes", .data = "generated.go linguist-generated\n" });
+    try runGit(&env, origin, &.{ "git", "add", "." });
+    try runGit(&env, origin, &.{ "git", "commit", "-qm", "fixture" });
+    const url = try std.fmt.allocPrint(testing.allocator, "file://{s}", .{origin});
+    defer testing.allocator.free(url);
+    try runGit(&env, root, &.{ "git", "clone", "-q", "--no-checkout", "--filter=blob:none", url, clone });
+    // Use the real Git file transport, with an upload-pack wrapper checking the
+    // credential environment before Git clears config for its upload process.
+    // No token is stored in repository config.
+    try tmp.dir.writeFile(testing.io, .{
+        .sub_path = "check-auth.sh",
+        .data = "case \"$GIT_CONFIG_VALUE_1\" in\n" ++
+            "  *'Authorization: Basic '*) exec git upload-pack \"$@\" ;;\n" ++
+            "  *) echo 'Authentication failed' >&2; exit 1 ;;\nesac\n",
+    });
+    const upload = try std.fmt.allocPrint(testing.allocator, "sh '{s}/check-auth.sh'", .{root});
+    defer testing.allocator.free(upload);
+    try runGit(&env, clone, &.{ "git", "config", "remote.origin.uploadpack", upload });
+    const options: activity.Options = .{
+        .sources = &.{.{ .existing = .{ .name = "private-org/project", .path = clone } }},
+        .author_emails = &.{"owner@example.test"},
+        .since = 1699999999,
+        .until = 1700000001,
+        .timeout = .{ .duration = .{ .raw = .fromSeconds(10), .clock = .awake } },
+    };
+    var denied = try activity.scan(testing.allocator, testing.io, &env, options);
+    defer denied.deinit();
+    try testing.expectEqual(@as(usize, 1), denied.value.unavailable_count);
+    var authenticated = options;
+    authenticated.token = "fixture-private-token";
+    var scanned = try activity.scan(testing.allocator, testing.io, &env, authenticated);
+    defer scanned.deinit();
+    try testing.expectEqual(@as(usize, 0), scanned.value.unavailable_count);
+    try testing.expectEqual(@as(usize, 1), scanned.value.commit_count);
+    try testing.expectEqualStrings("generated.go", scanned.value.repositories[0].attribute_excludes[0]);
 }

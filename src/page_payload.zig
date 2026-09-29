@@ -5,6 +5,7 @@ const config = @import("config.zig");
 const github_workflow = @import("github_workflow.zig");
 const git_activity = @import("git_activity.zig");
 const language_stats = @import("language_stats.zig");
+const exclusions = @import("exclusions.zig");
 
 const Allocator = std.mem.Allocator;
 
@@ -15,6 +16,7 @@ pub const Error = Allocator.Error || error{
     NumericOverflow,
     InvalidRecentProjectInput,
     InvalidWindow,
+    WeightOverflow,
 };
 
 pub const ContributionBreakdown = struct {
@@ -238,6 +240,7 @@ fn buildRecentProject(gpa: Allocator, input: BuildInput) Error!RecentProject {
     var best: ?Candidate = null;
     for (input.activity.repositories, 0..) |repository, index| {
         if (repository.status != .scanned) continue;
+        if (exclusions.repositoryExcluded(repository.name, input.config.excludes.repos)) continue;
         const identity = parseIdentity(repository.name) catch return error.InvalidRepositoryIdentity;
         if (!identityIn(owned.items, identity) and !identityIn(organizations.items, identity) and
             !identityIn(external.items, identity)) continue;
@@ -264,6 +267,19 @@ fn buildRecentProject(gpa: Allocator, input: BuildInput) Error!RecentProject {
         description = values.description;
         primary_language = values.primary_language;
     }
+    if (primary_language == null) {
+        for (input.activity.repositories) |repository| {
+            if (!identityMatches(repository.name, parsed)) continue;
+            const dominant = try language_stats.aggregate(gpa, &.{repository}, .{
+                .top = 1,
+                .types = &.{ "programming", "markup", "data", "prose" },
+                .excludes = .{ .paths = input.config.excludes.paths },
+            });
+            defer dominant.deinit();
+            if (dominant.entries.len > 0) primary_language = dominant.entries[0].name;
+            break;
+        }
+    }
     const age = std.math.sub(i64, now_day, selected.day) catch return error.InvalidRecentProjectInput;
     return .{ .project = .{
         .identity = try gpa.dupe(u8, selected.identity),
@@ -281,16 +297,15 @@ fn candidateForRepository(repository: git_activity.Repository, now_day: i64, win
     var count: usize = 0;
     var last_timestamp: i64 = std.math.minInt(i64);
     for (repository.commits) |commit| {
+        if (commit.timestamp > last_timestamp) last_timestamp = commit.timestamp;
         const day = localDay(commit.timestamp) catch return error.InvalidRecentProjectInput;
         const age = std.math.sub(i64, now_day, day) catch return error.InvalidRecentProjectInput;
-        if (age < 1 or age > window_days) continue;
+        if (age < 1 or age > @min(window_days, 60)) continue;
         if (best_day == null or day > best_day.?) {
             best_day = day;
             count = 1;
-            last_timestamp = commit.timestamp;
         } else if (day == best_day.?) {
             count += 1;
-            if (commit.timestamp > last_timestamp) last_timestamp = commit.timestamp;
         }
     }
     return if (best_day) |day| .{
@@ -305,8 +320,7 @@ fn betterCandidate(left: Candidate, right: Candidate) bool {
     if (left.day != right.day) return left.day > right.day;
     if (left.commit_count != right.commit_count) return left.commit_count > right.commit_count;
     if (left.last_timestamp != right.last_timestamp) return left.last_timestamp > right.last_timestamp;
-    return std.ascii.orderIgnoreCase(left.identity, right.identity) == .lt or
-        (std.ascii.eqlIgnoreCase(left.identity, right.identity) and std.mem.order(u8, left.identity, right.identity) == .lt);
+    return std.mem.lessThan(u8, left.identity, right.identity);
 }
 
 fn localDay(timestamp: i64) error{InvalidRecentProjectInput}!i64 {

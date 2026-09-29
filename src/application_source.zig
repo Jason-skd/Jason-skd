@@ -5,6 +5,7 @@ const github = @import("github.zig");
 const workflow = @import("github_workflow.zig");
 const git = @import("git_activity.zig");
 const input = @import("application_input.zig");
+const exclusions = @import("exclusions.zig");
 
 /// All nested source arenas allocate from this arena and share its lifetime.
 pub const OwnedData = struct {
@@ -39,12 +40,12 @@ pub fn load(allocator: std.mem.Allocator, io: std.Io, environ: *const std.proces
         if (result == .success) organization = result.success.value;
     }
     var sources: std.ArrayList(git.Source) = .empty;
-    for (profile.owned_repositories) |repository| try addSource(gpa, &sources, repository.name_with_owner);
+    for (profile.owned_repositories) |repository| try addSource(gpa, &sources, repository.name_with_owner, cfg.excludes.repos);
     if (cfg.org.repos) |repos| for (repos) |name| {
-        try addSource(gpa, &sources, name);
+        try addSource(gpa, &sources, name, cfg.excludes.repos);
     };
     if (cfg.include_external) for (profile.contributed_repositories) |repository| {
-        try addSource(gpa, &sources, repository.name_with_owner);
+        try addSource(gpa, &sources, repository.name_with_owner, cfg.excludes.repos);
     };
     var metadata: std.ArrayList(workflow.RepositoryMetadata) = .empty;
     for (sources.items) |source| {
@@ -59,6 +60,7 @@ pub fn load(allocator: std.mem.Allocator, io: std.Io, environ: *const std.proces
         .timeout = .{ .duration = .{ .raw = .fromSeconds(120), .clock = .awake } },
         .token = token,
         .clone_root = environ.get("TMPDIR") orelse "/tmp",
+        .report_progress = true,
     });
     return .{ .arena = arena, .value = .{
         .profile = profile,
@@ -68,7 +70,21 @@ pub fn load(allocator: std.mem.Allocator, io: std.Io, environ: *const std.proces
     } };
 }
 
-fn addSource(gpa: std.mem.Allocator, sources: *std.ArrayList(git.Source), name: []const u8) !void {
+fn addSource(gpa: std.mem.Allocator, sources: *std.ArrayList(git.Source), name: []const u8, excluded: []const []const u8) !void {
+    if (exclusions.repositoryExcluded(name, excluded)) return;
     for (sources.items) |source| if (std.ascii.eqlIgnoreCase(source.name(), name)) return;
     try sources.append(gpa, .{ .remote = .{ .name = name, .url = try std.fmt.allocPrint(gpa, "https://github.com/{s}.git", .{name}) } });
+}
+
+test "source selection keeps organizations deduplicates externals and applies repo exclusions" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var sources: std.ArrayList(git.Source) = .empty;
+    const excluded: []const []const u8 = &.{ "ignored", "external/skip" };
+    for ([_][]const u8{ "owner/personal", "org/go-project", "ORG/go-project", "external/tool", "owner/ignored", "external/skip" }) |name| {
+        try addSource(arena.allocator(), &sources, name, excluded);
+    }
+    try std.testing.expectEqual(@as(usize, 3), sources.items.len);
+    try std.testing.expectEqualStrings("org/go-project", sources.items[1].name());
+    try std.testing.expectEqualStrings("external/tool", sources.items[2].name());
 }

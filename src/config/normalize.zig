@@ -49,7 +49,7 @@ pub fn normalize(allocator: std.mem.Allocator, raw: raw_model.RawConfig) std.mem
             .header = try copyStringOrDefault(allocator, raw.languages.header, "🧑‍💻 Languages"),
             .top = boundPositiveOr(raw.languages.top, 8),
             .icon_height = boundPositiveOr(raw.languages.icon_height, 48),
-            .types = try copyOptionalStringList(allocator, raw.languages.types),
+            .types = try copyStringList(allocator, raw.languages.types orelse &.{ "programming", "markup" }),
         },
         .org_card = .{
             .enabled = raw.org_card.enabled orelse true,
@@ -61,6 +61,11 @@ pub fn normalize(allocator: std.mem.Allocator, raw: raw_model.RawConfig) std.mem
             .header = try copyStringOrDefault(allocator, raw.recent_project.header, "🚀 Recently Working On"),
             .icon_height = boundPositiveOr(raw.recent_project.icon_height, 96),
             .exclude_external = raw.recent_project.exclude_external orelse true,
+        },
+        .excludes = .{
+            .repos = try copyStringList(allocator, raw.excludes.repos orelse &.{}),
+            .languages = try copyStringList(allocator, raw.excludes.languages orelse &.{}),
+            .paths = try copyStringList(allocator, raw.excludes.paths orelse @import("../exclusions.zig").default_paths),
         },
     };
 }

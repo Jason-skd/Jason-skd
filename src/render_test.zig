@@ -128,11 +128,11 @@ test "organization escapes attributes without double percent encoding URLs" {
     try std.testing.expectError(error.MissingOrganization, render.organization(&w, &cfg.org_card, &org));
 }
 
-test "recent project empty copy carries actual window and fallback keeps link" {
+test "recent project keeps baseline empty copy and fallback link" {
     var buffer: [2048]u8 = undefined;
     var w = Writer.fixed(&buffer);
     try render.recentProject(&w, &cfg.recent_project, &.{ .window_days = 90, .selection = .none });
-    try std.testing.expectEqualStrings("<h3 align=\"center\">🚀 Recently Working On</h3>\n\n<p align=\"center\"><sub>No commits to show in the last 90 days</sub></p>", w.buffered());
+    try std.testing.expectEqualStrings("<h3 align=\"center\">🚀 Recently Working On</h3>\n\n<p align=\"center\"><sub>No commits to show in the last year</sub></p>", w.buffered());
     w = Writer.fixed(&buffer);
     var data = page.recent_project;
     data.selection.project.primary_language = null;

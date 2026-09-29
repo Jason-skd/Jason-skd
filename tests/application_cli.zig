@@ -44,8 +44,8 @@ test "CLI dry run atomic delivery and failures preserve filesystem and redact di
     try testing.expectEqualStrings("", dry.stderr);
     try testing.expect(std.mem.startsWith(u8, dry.stdout, "<!-- AUTO-GENERATED"));
     try testing.expect(std.mem.endsWith(u8, dry.stdout, "\n"));
-    try testing.expect(std.mem.indexOf(u8, dry.stdout, "zig build test-cli") != null);
-    try testing.expect(std.mem.indexOf(u8, dry.stdout, "[Repository rules](docs/governance/repository.md)") != null);
+    try testing.expect(std.mem.indexOf(u8, dry.stdout, "Generator & documentation") == null);
+    try testing.expect(std.mem.indexOf(u8, dry.stdout, "docs/governance/") == null);
     try expectFile(tmp.dir, "README.md", "original");
     const normal = try run(&env, &.{ paths.executable, "--config", base ++ "profile.yaml", "--fixtures", base ++ "success", "--output", target });
     defer release(normal);

@@ -14,11 +14,6 @@ theme:
 author_emails: # 只统计这些邮箱的提交
   - "wintor76111@gmail.com"
 
-org:
-  login: "SCNUAutoPtr"
-  repos:
-    - "SCNUAutoPtr/go-ce-v3"
-
 window_days: 365
 include_external: true # 语言统计纳入外部贡献仓库（如 awesome-dsh-plugin 上游）
 
@@ -45,7 +40,7 @@ typing:
   background: "0D1117" # GitHub 深色卡背（v1.1 定稿）
 
 banner:
-  height: 280
+  height: 140
   # v1.1 预览对比待用户选定后启用（capsule-render 内嵌文字，白字自动适配渐变）：
   # text: "wintor_"
   # desc: "CS @ Aberdeen · 造轮子爱好者"
@@ -75,7 +70,7 @@ excludes:
   repos: []
   # 语言手动微调专用（优先级最高）；Markdown/JSON/SQL/YAML 等辅助格式已由
   # languages.types 白名单自动排除，无需在此列举（issue #8）
-  languages: [Groovy, ]
+  languages: [Groovy, shell]
   # 显式列表会整体覆盖代码默认值，故默认 vendor 类目录必须一并列全
   paths:
     - "**/vendor/**"

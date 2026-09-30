@@ -14,6 +14,9 @@ theme:
 author_emails: # 只统计这些邮箱的提交
   - "wintor76111@gmail.com"
 
+org:
+  login: "SCNUAutoPtr"
+
 window_days: 365
 include_external: true # 语言统计纳入外部贡献仓库（如 awesome-dsh-plugin 上游）
 

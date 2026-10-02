@@ -109,6 +109,16 @@ test "parse requires organization identity when enabled org card is listed" {
     try std.testing.expectEqualStrings("org.login", diagnostic.path);
 }
 
+test "parse allows organization card without configured repository scan targets" {
+    const yaml = try std.mem.replaceOwned(u8, std.testing.allocator, minimal_yaml ++ "\norg:\n  login: example-org\n", "  - banner", "  - org_card");
+    defer std.testing.allocator.free(yaml);
+    var diagnostic: Diagnostic = .{};
+    var parsed = try parse(std.testing.allocator, yaml, &diagnostic);
+    defer parsed.deinit();
+    try std.testing.expectEqualStrings("example-org", parsed.value.org.login.?);
+    try std.testing.expect(parsed.value.org.repos == null);
+}
+
 test "parse rejects duplicate nested fields and sections" {
     const duplicate_nested = try std.mem.replaceOwned(
         u8,

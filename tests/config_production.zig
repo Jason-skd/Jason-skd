@@ -20,7 +20,7 @@ test "production profile parses through the public configuration API" {
     try std.testing.expectEqualStrings("📊 Last 365 Days", parsed.value.stats.header);
     try std.testing.expectEqualStrings("wintor76111@gmail.com", parsed.value.author_emails[0]);
     try std.testing.expectEqualStrings("SCNUAutoPtr", parsed.value.org.login.?);
-    try std.testing.expectEqualStrings("SCNUAutoPtr/go-ce-v3", parsed.value.org.repos.?[0]);
+    try std.testing.expect(parsed.value.org.repos == null);
     try std.testing.expectEqualStrings("wintor_ · CS @ SCNU/Aberdeen", parsed.value.typing.lines.?[0]);
 
     const expected = [_]config.Section{

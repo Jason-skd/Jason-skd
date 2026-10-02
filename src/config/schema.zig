@@ -59,7 +59,6 @@ const MappingState = struct {
     section_count: usize = 0,
     author_count: usize = 0,
     typing_line_count: usize = 0,
-    org_repo_count: usize = 0,
     org_card_enabled: bool = true,
 };
 
@@ -204,7 +203,6 @@ pub fn preflight(
             return invalid(diagnostic, .invalid_value, line_number, list_spec.path, raw_line, "list entries must not be empty");
         }
         if (top == .typing) state.typing_line_count += 1;
-        if (top == .org) state.org_repo_count += 1;
         try appendLine(&output, allocator, content);
     }
 
@@ -242,9 +240,6 @@ fn validateRequired(state: MappingState, seen_top: u16, diagnostic: *Diagnostic)
         const login_bit = @as(u32, 1) << childSpec(.org, "login").?.index;
         if (!state.present[@backingInt(TopKey.org)] or state.nested_seen[@backingInt(TopKey.org)] & login_bit == 0) {
             return invalid(diagnostic, .missing_field, 0, "org.login", null, "org.login is required when org_card is listed and enabled");
-        }
-        if (state.org_repo_count == 0) {
-            return invalid(diagnostic, .missing_field, 0, "org.repos", null, "org.repos must be non-empty when org_card is listed and enabled");
         }
     }
 }

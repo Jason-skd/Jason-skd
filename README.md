@@ -17,10 +17,10 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-29-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1891-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1342-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-174-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-29-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1894-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1342-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-175-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>Last 365 days · incl. 1067 private contributions</sub></p>
+<p align="center"><sub>Last 365 days · incl. 1070 private contributions</sub></p>
 
 ---
 
@@ -43,9 +43,9 @@
 <h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/Jason-skd/play-pair"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="play-pair" /></a>
-  <br/><b>play-pair</b>
-  <br/><sub>6 commits yesterday</sub>
+  <a href="https://github.com/Jason-skd/diskoff"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="96" alt="Zig" title="diskoff" /></a>
+  <br/><b>diskoff</b>
+  <br/><sub>1 commits yesterday</sub>
 </p>
 
 <p align="center">

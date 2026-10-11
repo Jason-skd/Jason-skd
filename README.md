@@ -17,17 +17,17 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-30-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1978-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1384-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-179-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-30-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-1980-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1518-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-180-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>Last 365 days · incl. 1165 private contributions</sub></p>
+<p align="center"><sub>Last 365 days · incl. 1167 private contributions</sub></p>
 
 ---
 
 <h3 align="center">🧑‍💻 Languages</h3>
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 36.9%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 30.9%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 12.4%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 11.3%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 6.6%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 0.8%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg" height="48" alt="Shell" title="Shell 0.6%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg" height="48" alt="C" title="C 0.2%" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 34.4%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 28.8%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 18.3%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 10.5%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 6.1%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 0.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg" height="48" alt="Shell" title="Shell 0.6%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/c/c-original.svg" height="48" alt="C" title="C 0.2%" />
 </p>
 
 ---
@@ -45,7 +45,7 @@
 <p align="center">
   <a href="https://github.com/Jason-skd/my-codeforces"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="my-codeforces" /></a>
   <br/><b>my-codeforces</b>
-  <br/><sub>2 commits yesterday</sub>
+  <br/><sub>2 commits recently</sub>
 </p>
 
 <p align="center">

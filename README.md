@@ -17,7 +17,7 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-30-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2076-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1602-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-184-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-30-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2075-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1602-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-184-7aa2f7?style=for-the-badge" />
 </p>
 
 <p align="center"><sub>Last 365 days · incl. 1262 private contributions</sub></p>
@@ -45,7 +45,7 @@
 <p align="center">
   <a href="https://github.com/SCNUAutoPtr/go-ce-v5"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="go-ce-v5" /></a>
   <br/><b>go-ce-v5</b>
-  <br/><sub>8 commits yesterday</sub>
+  <br/><sub>8 commits recently</sub>
 </p>
 
 <p align="center">

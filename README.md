@@ -17,17 +17,17 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-30-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2110-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1625-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-186-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-30-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2118-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1632-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-187-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>Last 365 days · incl. 1297 private contributions</sub></p>
+<p align="center"><sub>Last 365 days · incl. 1302 private contributions</sub></p>
 
 ---
 
 <h3 align="center">🧑‍💻 Languages</h3>
 
 <p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 38.8%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 26.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 17.2%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 9.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 5.6%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 0.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg" height="48" alt="Shell" title="Shell 0.5%" />&nbsp;&nbsp;&nbsp;&nbsp;<sub><b>Makefile</b> 0.2%</sub>
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="48" alt="Go" title="Go 38.9%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="48" alt="Python" title="Python 26.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="48" alt="TypeScript" title="TypeScript 17.2%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="48" alt="Zig" title="Zig 9.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/kotlin/kotlin-original.svg" height="48" alt="Kotlin" title="Kotlin 5.6%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/cplusplus/cplusplus-original.svg" height="48" alt="C++" title="C++ 0.7%" />&nbsp;&nbsp;&nbsp;&nbsp;<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/bash/bash-original.svg" height="48" alt="Shell" title="Shell 0.5%" />&nbsp;&nbsp;&nbsp;&nbsp;<sub><b>Makefile</b> 0.2%</sub>
 </p>
 
 ---
@@ -45,7 +45,7 @@
 <p align="center">
   <a href="https://github.com/Jason-skd/play-pair-rev"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="play-pair-rev" /></a>
   <br/><b>play-pair-rev</b>
-  <br/><sub>9 commits yesterday</sub>
+  <br/><sub>2 commits yesterday</sub>
 </p>
 
 <p align="center">

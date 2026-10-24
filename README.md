@@ -45,7 +45,7 @@
 <p align="center">
   <a href="https://github.com/Jason-skd/rj-connect.zig"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/zig/zig-original.svg" height="96" alt="Zig" title="rj-connect.zig — 用于学习复杂网络环境下的加密、多次握手，以及通过心跳持续维持认证状态的工程方法。 Zig 代码提供对研究成果的一次实例复刻。" /></a>
   <br/><b>rj-connect.zig</b>
-  <br/><sub>36 commits yesterday</sub>
+  <br/><sub>36 commits recently</sub>
 </p>
 
 <p align="center">

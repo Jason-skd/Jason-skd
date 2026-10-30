@@ -45,7 +45,7 @@
 <p align="center">
   <a href="https://github.com/Jason-skd/play-pair-rev"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="play-pair-rev" /></a>
   <br/><b>play-pair-rev</b>
-  <br/><sub>4 commits yesterday</sub>
+  <br/><sub>4 commits recently</sub>
 </p>
 
 <p align="center">

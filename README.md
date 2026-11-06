@@ -45,7 +45,7 @@
 <p align="center">
   <a href="https://github.com/Jason-skd/learn-vLLM"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="learn-vLLM" /></a>
   <br/><b>learn-vLLM</b>
-  <br/><sub>5 commits yesterday</sub>
+  <br/><sub>5 commits recently</sub>
 </p>
 
 <p align="center">

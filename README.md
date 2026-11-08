@@ -17,7 +17,7 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-36-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2409-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1738-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-200-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-36-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2416-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1744-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-201-7aa2f7?style=for-the-badge" />
 </p>
 
 <p align="center"><sub>Last 365 days · incl. 892 private contributions</sub></p>
@@ -43,9 +43,9 @@
 <h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/Jason-skd/learn-vLLM"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="learn-vLLM" /></a>
-  <br/><b>learn-vLLM</b>
-  <br/><sub>5 commits recently</sub>
+  <a href="https://github.com/Jason-skd/dsh-session-fork"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="96" alt="TypeScript" title="dsh-session-fork — Makes the branch the building block of AI conversation management — parallel workflows, continuous and mergeable conversation memory" /></a>
+  <br/><b>dsh-session-fork</b>
+  <br/><sub>6 commits yesterday</sub>
 </p>
 
 <p align="center">

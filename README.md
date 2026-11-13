@@ -17,10 +17,10 @@
 <h3 align="center">📊 Last 365 Days</h3>
 
 <p align="center">
-  <img alt="Stars" src="https://img.shields.io/badge/stars-36-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2428-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1755-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-203-7aa2f7?style=for-the-badge" />
+  <img alt="Stars" src="https://img.shields.io/badge/stars-36-7aa2f7?style=for-the-badge" />  <img alt="Contributions" src="https://img.shields.io/badge/contributions-2429-7aa2f7?style=for-the-badge" />  <img alt="Authored commits" src="https://img.shields.io/badge/authored%20commits-1756-7dcfff?style=for-the-badge" />  <img alt="Active days" src="https://img.shields.io/badge/active%20days-204-7aa2f7?style=for-the-badge" />
 </p>
 
-<p align="center"><sub>Last 365 days · incl. 896 private contributions</sub></p>
+<p align="center"><sub>Last 365 days · incl. 897 private contributions</sub></p>
 
 ---
 
@@ -43,9 +43,9 @@
 <h3 align="center">🚀 Recently Working On</h3>
 
 <p align="center">
-  <a href="https://github.com/Jason-skd/learn-vLLM"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="96" alt="Python" title="learn-vLLM" /></a>
-  <br/><b>learn-vLLM</b>
-  <br/><sub>4 commits recently</sub>
+  <a href="https://github.com/Jason-skd/play-pair-rev"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/go/go-original-wordmark.svg" height="96" alt="Go" title="play-pair-rev" /></a>
+  <br/><b>play-pair-rev</b>
+  <br/><sub>1 commits yesterday</sub>
 </p>
 
 <p align="center">

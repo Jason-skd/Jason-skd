@@ -45,7 +45,7 @@
 <p align="center">
   <a href="https://github.com/Jason-skd/si-batch"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" height="96" alt="TypeScript" title="si-batch — SI-batch 是一个面向多 SSO 账号的批量签到网页工具。将账号录入当前实例后，你只需扫描一次 SI 考勤二维码并授权浏览器获取定位，服务端就会使用每个账号各自的凭证登录，并独立执行签到。" /></a>
   <br/><b>si-batch</b>
-  <br/><sub>48 commits yesterday</sub>
+  <br/><sub>9 commits yesterday</sub>
 </p>
 
 <p align="center">
